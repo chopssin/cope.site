@@ -1,0 +1,10 @@
+extends layout
+
+block content
+  h1= title
+  #msg
+
+block javascripts
+  script( src="/socket.io/socket.io.js" )
+  script( src="/javascripts/cope.client.js" )
+  script( src="/javascripts/page-home.js" )
