@@ -25,10 +25,10 @@ function signOut() {
 };
 
 function post() {
-  //let newpost = graph.node();
-  //newpost.val({
-  //  title: 'Created at ' + new Date()
-  //});
+  let newpost = graph.node();
+  newpost.val({
+    title: 'Created at ' + new Date()
+  });
   //newPost.tag('post');
   //newPost.scope({ w: 'me', r: 'group/VIP' });
   

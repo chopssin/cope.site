@@ -109,25 +109,37 @@
       node.val = val;
       node.then = then;
       node.snap = snap;
+      node.tag = tag;
+      node.alias = alias;
       node.scope = scope;
 
       // Private variables
-      let nodeId = makeId(16),
+      let nodeId = util.makeIdWithTime(16),
           data = {},
+          nodeAlias = null,
           queue = util.makeQueue();
+
+      console.log('nodeId', nodeId);
 
       function val() {
         let args = arguments;
         switch (args.length) {
           case 0: // get all values
+            return get();
             break;
           case 1: // get(key) or set(values)
+            if (typeof args[0] == 'string') {
+              return get(args[0]);
+            } else {
+              return set(args[0]);
+            }
             break;
           case 2: // set(key, value)
+            return set(args[0], args[1]);
             break;
           default: // throw error
         };
-        return;
+        return console.error('node.val: invalid use of `val`');
       }; // end of val
 
       function then() {
@@ -138,8 +150,16 @@
         return data; 
       }; // end of snap
 
+      function alias() {
+        return node;
+      };
+
+      function tag() {
+        return node;
+      };
+
       function scope(params) { // { w:<str>, r:<str> }
-        return; 
+        return node; 
       };
 
       // Private functions in function `node`
@@ -166,7 +186,8 @@
                   queue.next();
                 }).send({
                   graphId: graphId,
-                  values: args[0]
+                  nodeId: nodeId,
+                  updates: args[0]
                 });
               });
 
@@ -239,6 +260,7 @@
   util.conn = makeConn(io); // contruct `conn`
   util.makeCallbackManager = makeCallbackManager;
   util.makeId = makeId;
+  util.makeIdWithTime = makeIdWithTime;
   util.makeTimestampWithId = makeTimestampWithId;
   util.makeQueue = makeQueue;
 
@@ -392,6 +414,15 @@
     return text;
   }; // end of makeId
 
+  function makeIdWithTime(len) {
+    let str = (new Date().getTime()).toString(36);
+    len = (typeof len == 'number' && len > 0) 
+      ? len 
+      : 5; // Five characters by default
+
+    return (str + makeId(len - str.length)).slice(0, len);
+  }; // end of makeIdWithTime
+
   function makeTimestampWithId() {
     return new Date().getTime() + '_' + makeId();
   }; // end of makeTimestampWithId
@@ -403,7 +434,7 @@
 
     // Private variables
     let funcs = [],
-        runnung = null,
+        running = null,
         idx = -1;
 
     function add(fn) { // q.add(next => { ... });
