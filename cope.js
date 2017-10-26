@@ -5,14 +5,14 @@ module.exports = function() {
 
   // cope.user API
   cope.user = function() {
-    var api = {},
+    var user = {},
         userData = null;
 
-    api.fetch = function() {
+    user.fetch = function() {
       return userData;
     }; // end of api.fetch
 
-    api.update = function(params) {
+    user.update = function(params) {
       if (!params || typeof params != 'object') {
         userData = null;
         return;
@@ -23,7 +23,7 @@ module.exports = function() {
       return;
     };
 
-    api.signIn = function(params) {
+    user.signIn = function(params) {
       return new Promise(function(resolve, reject) {
 
         // Resolve with the current user data; otherwise, 
@@ -46,7 +46,7 @@ module.exports = function() {
       }); // end of Promise
     }; // end of user.signIn
 
-    api.signOut = function() {
+    user.signOut = function() {
       return new Promise(function(resolve, reject) {
         // TBD
         setTimeout(function() {
@@ -56,11 +56,52 @@ module.exports = function() {
         }, 1000);
       });
     }; // end of user.signOut
-    return api;
+    return user;
   }; // end of cope.user
 
   // cope.graph
-  cope.graph = function() {};
+  cope.graph = function(graphId) {
+    let graph = {};
+    graph.node = node;
+
+    function node() {
+      let node = {};
+      node.val = val;
+
+      // Private variables
+      let nodeData = {};
+
+      function val() {
+        
+      }; // end of val
+
+      // Private functions
+      function set(updates) {
+        if (typeof updates != 'object') {
+          return console.error('graph.node: invalid use of `set`');
+        }
+        for (let name in updates) {
+          nodeData[name] = updates[name]; 
+        }
+        // TBD: update to database
+        // TBD: use queue.add
+        return node;
+      }; // end of set
+
+      function get(key) {
+        // TBD: use queue.add
+        if (typeof key != 'string') {
+          // TBD: read from database
+          // update nodeData
+          // call resolve function
+        }
+        return node;
+      }; // end of get
+      return node;
+    }; // end of node
+
+    return graph;
+  }; // end of cope.graph
 
   // s stands for socket
   cope.config = function(s) {
@@ -83,29 +124,15 @@ module.exports = function() {
         // translate restful api by using cope.user
         switch (api) {
           case 'u/fetch': 
-            let userData = user.fetch() 
-              || (socket && socket.handshake 
-                  && socket.handshake.session
-                  && socket.handshake.session.userData)
-              || null;
-
-            // Update userData
-            user.update(userData);
-
-            debug('u/fetch:userData', userData);
-            if (userData) {
+            getUser(user => {
+              let userData = user.fetch();
+              debug('u/fetch:userData', userData);
               socket.emit('toClient', {
-                signal: 'signedIn',
+                signal: userData ? 'signedIn' : 'signedOut',
                 reqId: reqId,
                 data: userData
               });
-            } else {
-              socket.emit('toClient', {
-                signal: 'signedOut',
-                reqId: reqId,
-                data: null
-              })
-            }
+            });
             break;
           case 'u/signin':
             user.signIn(data).then(function(userData) {
@@ -133,26 +160,55 @@ module.exports = function() {
               socket.handshake.session.save();
 
               socket.emit('toClient', {
-                //msg: 'u/signedout_' + data.rid,
                 signal: 'signedOut',
                 reqId: reqId,
                 data: null
               });  
             });
             break;
-          case 'g': 
-            // TBD
+          case 'g/node/set': 
+            cope.graph(data.graphId)
+              .node(data.nodeId)
+              .val(data.values);
+            //.then(() => {
+            //  ...
+            //});
             break;
-        }
-        
-        // cope.graph  
+        } // end of switch
       } catch (err) {
         
-      }
+      } // end of try - catch
     }); // end of socket.on('toServer')
     
+    function getUser(callback) {
+      let userData = user.fetch() 
+        || (socket && socket.handshake 
+            && socket.handshake.session
+            && socket.handshake.session.userData)
+        || null;
+      user.update(userData);
+      try {
+        callback(user);
+      } catch (err) {
+        // TBD: error msg
+      }
+    }; // end of getUser
     return;
   }; // end of cope.config
+
+  // Utilities
+  function makeQueue() {
+    let queue = {},
+        
+    queue.add = function() {
+      
+    }; // end of queue.add
+
+    queue.next = function() {
+    
+    }; // end fo queue.next
+    return queue;
+  };
 
   return cope;
 }();
