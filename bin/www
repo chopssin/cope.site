@@ -47,7 +47,7 @@ io.use(sharedsession(sess, {
 
 io.on('connection', function(socket) {
   debug('socket.io: a user connected');
-  if (!cope || !cope.config) {
+  if (!cope) {
     debug('Error', 'Failed to use cope');
   }
 

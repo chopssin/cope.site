@@ -15,7 +15,7 @@ module.exports = function() {
     userAPI.fetch = fetch;
     userAPI.update = update;
     userAPI.signIn = signIn;
-    userAPI.singOut = signOut;
+    userAPI.signOut = signOut;
     userAPI.useSocketIO = useSocketIO;
 
     // Private variables
@@ -66,7 +66,8 @@ module.exports = function() {
       let checkData = socket && socket.handshake 
                       && socket.handshake.session
                       && socket.handshake.session.userData;
-      if (checkData) {
+      if (checkData && checkData.email) {
+        debug('cope.user: found signed-in user: ', checkData.email);
         update(checkData);
       }
     }; // end of `useSocketIO` of object `userAPI`
@@ -250,7 +251,8 @@ module.exports = function() {
       vo.api = obj && obj.api;
       vo.reqId = obj && obj.reqId;
       vo.data = obj && obj.data;
-      if (typeof api != 'string') {
+      if (typeof vo.api != 'string') {
+        debug('ERROR', 'readReq: `api` is not specified');
         return null;
       }
       return vo;
@@ -262,9 +264,10 @@ module.exports = function() {
         debug('ERROR', 'reqObj: failed to validate respond object in "toClient"');
         return;
       }
+      debug('sendObj: ' + signal, data, reqId);
       socket.emit('toClient', {
         signal: signal,
-        data: data, null,
+        data: data || null,
         reqId: typeof reqId == 'string' ? reqId : null
       });
       return;
