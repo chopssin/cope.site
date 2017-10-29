@@ -11,6 +11,8 @@ var sess = app.get('sess');
 var sharedsession = require('express-socket.io-session');
 var cope = require('../cope'); 
 
+// TBD: cope.configDb(db);
+
 /**
  * Get port from environment and store in Express.
  */
@@ -46,12 +48,12 @@ io.use(sharedsession(sess, {
 io.on('connection', function(socket) {
   debug('socket.io: a user connected');
   if (!cope || !cope.config) {
-    throw 'Failed to use cope';
+    debug('Error', 'Failed to use cope');
   }
 
   // Use Cope
   debug('socket.io: start to use cope');
-  cope.config(socket);
+  cope.useSocketIO(socket);
 });
 
 /**
