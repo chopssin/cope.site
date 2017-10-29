@@ -1,31 +1,48 @@
 var debug = require('debug')('cope.site:cope');
 
-module.exports = function() {
-  var cope = {};
  
-  cope.useSocketIO = useSocketIO;
-  cope.useMongoDb = useMongoDb;
-  cope.user = user;
-  cope.graph = graph;
+// cope methods
+// cope.user: () => <obj>userAPI
+// cope.graph: (<str>graphId) => <obj>graphAPI
+// cope.useSocketIO: (<obj>socket) => <undefined>
+// cope.useMongoDb: (<obj>db) => <undefined>
+module.exports = function() {
+  let cope = {};
 
-  // cope.user API
-  function user() {
+  // Private variables
+  let db = null;
+
+  // Utilities: private functions of object `cope`
+  let makeQueue = function() {
+    let queue = {};
+        
+    queue.add = function() {
+      
+    }; // end of queue.add
+
+    queue.next = function() {
+    
+    }; // end fo queue.next
+    return queue;
+  }; // end of `makeQueue`
+
+  // cope.user() methods
+  // - fetch: () => <obj>userData
+  // - update: (<obj>userData) => <undefined>
+  // - signIn: (<obj>signInParams) => <promise>
+  // - signOut: (<obj>signOutParams) => <promise>
+  // - useSocketIO: (<obj>socket) => <undefined>
+  cope.user = function() {
     var userAPI = {};
-
-    userAPI.fetch = fetch;
-    userAPI.update = update;
-    userAPI.signIn = signIn;
-    userAPI.signOut = signOut;
-    userAPI.useSocketIO = useSocketIO;
 
     // Private variables
     let userData = null;
 
-    function fetch() {
+    userAPI.fetch = function() {
       return userData;
-    }; // end of `fetch` of object `userAPI`
+    }; // end of userAPI.fetch
 
-    function update(params) {
+    userAPI.update = function(params) {
       if (!params || typeof params != 'object') {
         userData = null;
         return;
@@ -34,9 +51,9 @@ module.exports = function() {
       userData.id = params.id;
       userData.email = params.email;
       return;
-    }; // end of `update` of object `userAPI`
+    }; // end of userAPI.update
 
-    function signIn(params) {
+    userAPI.signIn = function(params) {
       return new Promise(function(resolve, reject) {
         // TBD: validate params
         //if (!params) { 
@@ -49,9 +66,9 @@ module.exports = function() {
           resolve(userData);
         }, 300);
       }); // end of Promise
-    }; // end of `signIn` of object `userAPI`
+    }; // end of userAPI.signIn
 
-    function signOut() {
+    userAPI.signOut = function() {
       return new Promise(function(resolve, reject) {
         // TBD: use db
         setTimeout(function() {
@@ -60,39 +77,42 @@ module.exports = function() {
           resolve(userData);
         }, 1000);
       });
-    }; // end of `signOut` of object `userAPI`
+    }; // end of userAPI.signOut
     
-    function useSocketIO(socket) {
+    userAPI.useSocketIO = function(socket) {
       let checkData = socket && socket.handshake 
                       && socket.handshake.session
                       && socket.handshake.session.userData;
       if (checkData && checkData.email) {
         debug('cope.user: found signed-in user: ', checkData.email);
-        update(checkData);
+        userAPI.update(checkData);
       }
-    }; // end of `useSocketIO` of object `userAPI`
+      return;
+    }; // end of userAPI.useSocketIO
     
     return userAPI;
   }; // end of `user` of object `cope`
 
-  // cope.graph
-  function graph(graphId) {
-    let graph = {};
-    graph.node = node;
+  // cope.graph() methods
+  // - node: (? <str>nodeId) => <obj>nodeAPI
+  // - useSocketIO: (<obj>socket) => <undefined>
+  cope.graph = function(graphId) {
+    let graphAPI = {};
 
-    function node() {
-      let node = {};
-      node.val = val;
+    // graphAPI.node() methods
+    // - val: () => <obj>nodeAPI, 
+    //        (<str>) => <obj>nodeAPI,
+    //        (<obj>) => <obj>nodeAPI,
+    //        (<str>, <mixed>) => <obj>nodeAPI
+    // - then: () => <obj>nodeAPI
+    // - snap: () => <obj>nodeData
+    graphAPI.node = function() {
+      let nodeAPI = {};
 
       // Private variables
       let nodeData = {};
 
-      function val() {
-        
-      }; // end of val
-
-      // Private functions
-      function set(updates) {
+      let set = function(updates) {
         if (typeof updates != 'object') {
           return console.error('graph.node: invalid use of `set`');
         }
@@ -101,33 +121,44 @@ module.exports = function() {
         }
         // TBD: update to database
         // TBD: use queue.add
-        return node;
-      }; // end of set
-
-      function get(key) {
+        return nodeAPI;
+      }; // end of `set`
+      
+      let get = function() {
         // TBD: use queue.add
-        if (typeof key != 'string') {
-          // TBD: read from database
-          // update nodeData
-          // call resolve function
-        }
-        return node;
-      }; // end of get
-      return node;
-    }; // end of node
+        // TBD: read from database
+        // update nodeData
+        // call resolve function
+        return nodeAPI;
+      }; // end of `get`
 
-    return graph;
-  }; // end of `graph` of object `cope`
+      nodeAPI.val = function() {
+        return nodeAPI; 
+      }; // end of nodeAPI.val
 
-  // Beware that `useSocketIO` will be called on every single
+      nodeAPI.then = function() {
+        return nodeAPI; 
+      }; // end of nodeAPI.then
+
+      nodeAPI.snap = function() {
+        return nodeData; 
+      }; // end of nodeAPI.snap
+
+      return nodeAPI;
+    }; // end of graphAPI.node
+
+    return graphAPI;
+  }; // end of cope.graph
+
+  // Beware that `cope.useSocketIO` will be called on every single
   // connection (once a brower is linked to the server, see details in "bin/www").
   //
   // Here we set up the connection using socket.io where we take in `s` aka socket in
   // the file "bin/www".
   //
   // So if one day we ditch socket.io, this method should be fully rewitten!
-  function useSocketIO(s) {
-    var socket = s, 
+  cope.useSocketIO = function(s) {
+    let socket = s, 
         user = cope.user(); // cope user API
     
     if (!socket) { 
@@ -138,6 +169,34 @@ module.exports = function() {
     user.useSocketIO(s);
     //TBD: graph.useSocketIO(s);
 
+    // Private functions:
+    // Interpret the request object
+    let readReq = function(obj) {
+      let vo = {};
+      vo.api = obj && obj.api;
+      vo.reqId = obj && obj.reqId;
+      vo.data = obj && obj.data;
+      if (typeof vo.api != 'string') {
+        debug('ERROR', 'readReq: `api` is not specified');
+        return null;
+      }
+      return vo;
+    }; // end of `readReq`
+
+    // To validate the respond object before sending it
+    let sendObj = function(signal, data, reqId) {
+      if (typeof signal != 'string') {
+        debug('ERROR', 'reqObj: failed to validate respond object in "toClient"');
+        return;
+      }
+      debug('sendObj: ' + signal, data, reqId);
+      socket.emit('toClient', {
+        signal: signal,
+        data: data || null,
+        reqId: typeof reqId == 'string' ? reqId : null
+      });
+      return;
+    }; // end of `sendObj`
 
     // The format of the sent objects of "toServer" and "toClient":
     // "toServer" - {
@@ -153,7 +212,6 @@ module.exports = function() {
     // } <- validated by `resObj`
 
     // TBD: make sure this is a private end-to-server socket
-    //
     // Here we interpret client-side object, and
     // use server-side Cope api to do the corresponding tasks
     socket.on('toServer', (obj, fn) => {
@@ -222,77 +280,17 @@ module.exports = function() {
         
       } // end of try - catch
     }); // end of socket.on('toServer')
-    
-    // The reason for this function, instead of 
-    // directly calling `user.fetch`, is to ensure 
-    // and update whether the user's client session 
-    // reamins signed-in status and to keep the user 
-    // status consistent on both sides
-    /*
-    function getUser(callback) {
-      let userData = user.fetch() 
-        || (socket && socket.handshake 
-            && socket.handshake.session
-            && socket.handshake.session.userData)
-        || null;
-      user.update(userData);
-      try {
-        callback(user);
-      } catch (err) {
-        // TBD: error msg
-      }
-    }; // end of getUser
-    */
-
-    // Private functions:
-    // Interpret the request object
-    function readReq(obj) {
-      let vo = {};
-      vo.api = obj && obj.api;
-      vo.reqId = obj && obj.reqId;
-      vo.data = obj && obj.data;
-      if (typeof vo.api != 'string') {
-        debug('ERROR', 'readReq: `api` is not specified');
-        return null;
-      }
-      return vo;
-    }; // end of `readReq` of function `useSocketIO`
-
-    // To validate the respond object before sending it
-    function sendObj(signal, data, reqId) {
-      if (typeof signal != 'string') {
-        debug('ERROR', 'reqObj: failed to validate respond object in "toClient"');
-        return;
-      }
-      debug('sendObj: ' + signal, data, reqId);
-      socket.emit('toClient', {
-        signal: signal,
-        data: data || null,
-        reqId: typeof reqId == 'string' ? reqId : null
-      });
-      return;
-    }; // end of `validateRes` of function `useSocketIO`
 
     return;
-  }; // end of `useSocketIO` of object `cope`
+  }; // end of cope.useSocketIO
 
-  function useMongoDb() {
-    // TBD
-  }; // end of `useMongoDb` of object `cope`
-
-  // Utilities: private functions of object `cope`
-  function makeQueue() {
-    let queue = {};
-        
-    queue.add = function() {
-      
-    }; // end of queue.add
-
-    queue.next = function() {
+  cope.useMongoDb = function(mongo) {
+    // TBD: deal with mongo and modify external `db`
+    db = function() {
     
-    }; // end fo queue.next
-    return queue;
-  };
+    };
+    return;
+  }; // end of cope.useMongoDb
 
   return cope;
 }();
