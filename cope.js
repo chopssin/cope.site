@@ -1,7 +1,6 @@
 let debug = require('debug')('cope.site:cope');
 let fs = require('fs');
 let MongoClient = require('mongodb').MongoClient;
-
  
 // cope
 // cope.util.readJSON: (<str>path, <func>callback) => <undefined>
@@ -58,11 +57,34 @@ module.exports = function() {
   // - deleteAccount: () => <promise>
   // - useSocketIO: (<obj>socket) => <undefined>
   cope.user = function() {
-    var userAPI = {};
+    let userAPI = {};
 
     // Private variables
     let userData = null,
         updateSocketData = function() {}; // will be overwritten by userAPI.useSocketIO
+      
+    let userStatus = function() {
+      let obj = {},
+          currentMSG = 'USER_SIGNED_OUT';
+      [ 'USER_SIGNED_UP',
+        'USER_SIGNED_IN',
+        'USER_SIGNED_OUT',
+        'USER_DELETED',
+        'WRONG_PASSWORD',
+        'USER_DUPLICATED',
+        'USER_NOT_FOUND' ].map((msg, idx) => {
+        obj[msg] = {
+          code: idx,
+          msg: msg
+        };  
+      }); // end of map
+      return function(msg) {
+        if (typeof msg == 'string') {
+          currentMSG = msg;
+        }
+        return obj[currentMSG];
+      };
+    }(); // end of userStatus()
 
     let updateUserData = function(params) {
       if (!params || typeof params != 'object') {
@@ -84,7 +106,10 @@ module.exports = function() {
     }; // end of clearUserData
 
     userAPI.fetch = function() {
-      return userData;
+      return {
+        'userData': userData,
+        'status': userStatus()
+      };
     }; // end of userAPI.fetch
 
     userAPI.signUp = function(params) {
@@ -105,15 +130,17 @@ module.exports = function() {
               }
 
               if (docs.length > 0) {
-                debug('User "' + email + '" already existed');
-                reject('User "' + email + '" already existed');
+                //debug('User "' + email + '" already existed');
+                //reject('User "' + email + '" already existed');
+                debug('User "' + email + '"', userStatus('USER_DUPLICATED'));
+                reject(userStatus('USER_DUPLICATED'))
                 db.close();
               } else if (docs.length === 0) {
                 db.collection('users').insertOne(params, (err, result) => {
                   if (err) { debug(); }
                   if (result && result.insertedCount === 1) {
                     debug('user.signUp: ' + (params && params.email) + ' signed up successfully');
-                    resolve(params);
+                    resolve(userStatus('USER_SIGNED_UP'));
                   }
                   db.close();
                 }); // end of signing up the user
@@ -144,12 +171,14 @@ module.exports = function() {
               debug('user.signIn', docs);
               if (!docs || docs.length === 0) {
                 debug('User "' + email + '" not found');
-                reject('User "' + email + '" not found');
+                // reject('User "' + email + '" not found');
+                reject(userStatus('USER_NOT_FOUND'));
               } else if (docs.length === 1) {
 
                 if (docs[0].password != password) {
                   debug('Wrong password of user "' + email + '"');
-                  reject('Wrong password of user "' + email + '"');
+                  //reject('Wrong password of user "' + email + '"');
+                  reject(userStatus('WRONG_PASSWORD'));
                   return;
                 }
 
@@ -162,10 +191,11 @@ module.exports = function() {
 
                 updateUserData(userData);
 
-                resolve(userData);
+                resolve(userStatus('USER_SIGNED_IN'));
               } else {
                 debug('Found multiple users of "' + email + '"');
-                reject('Found multiple users of "' + email + '"');
+                //reject('Found multiple users of "' + email + '"');
+                reject(userStatus('USER_DUPLICATED'));
               }
             
               db.close();
@@ -185,7 +215,7 @@ module.exports = function() {
       clearUserData();
       return new Promise(function(resolve, reject) {
         debug('user.signOut: clear up `userData`');
-        resolve(userData);
+        resolve(userStatus('USER_SIGNED_OUT'));
       });
     }; // end of userAPI.signOut
 
@@ -194,7 +224,8 @@ module.exports = function() {
         let email = userData && userData.email;
         if (!email) {
           debug('user.deleteAccount: userData is null');
-          reject('user.deleteAccount: userData is null');
+          //reject('user.deleteAccount: userData is null');
+          reject(userStatus('USER_NOT_FOUND'));
           return;
         }
 
@@ -208,7 +239,8 @@ module.exports = function() {
                 debug('user.deleteAccount: user "' + email + '" deleted');
                 clearUserData();
                 userAPI.signOut().then(() => {
-                  resolve({ 'status': 'ok' });
+                  //resolve({ 'status': 'ok' });
+                  resolve(userStatus('USER_DELETED'));
                 });
               }
               db.close();
@@ -385,7 +417,7 @@ module.exports = function() {
         // translate restful api by using cope.user
         switch (api) {
           case 'u/fetch': 
-            let userData = user.fetch();
+            let userData = user.fetch().userData;
             sendObj(userData ? 'signedIn' : 'signedOut', 
                     userData,
                     reqId);
@@ -402,20 +434,20 @@ module.exports = function() {
             */
             break;
           case 'u/signup':
-            user.signUp(data).then(userData => {
-              debug('u/signup', userData);
-              sendObj('signedUp', { 'status': 'ok' }, reqId);
+            user.signUp(data).then(userStatus => {
+              debug('u/signup', userStatus);
+              sendObj('signedUp', userStatus, reqId);
             }).catch(function(err) {
               sendObj('signedUp/error', err, reqId);
             });
             break;
           case 'u/signin':
-            user.signIn(data).then(function(userData) {
+            user.signIn(data).then(function(userStatus) {
 
               // Share user data with express `req.session`
               // socket.handshake.session.userData = userData;
               // socket.handshake.session.save();
-
+              let userData = user.fetch().userData;
               debug('u/signin', userData);
               sendObj('signedIn', userData, reqId);
             }).catch(function(err) {
@@ -423,18 +455,18 @@ module.exports = function() {
             });
             break;
           case 'u/signout': 
-            user.signOut().then(function() {
+            user.signOut().then(userStatus => {
 
               // Clear user data in express `req.session`
-              socket.handshake.session.userData = null;
-              socket.handshake.session.save();
+              // socket.handshake.session.userData = null;
+              // socket.handshake.session.save();
 
-              sendObj('signedOut', null, reqId);
+              sendObj('signedOut', userStatus, reqId);
             });
             break;
           case 'u/delete':
-            user.deleteAccount().then(() => {
-              sendObj('deleted', null, reqId);
+            user.deleteAccount().then(userStatus => {
+              sendObj('deleted', userStatus, reqId);
             });
             break;
           case 'g/node/set': 

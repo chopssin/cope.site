@@ -18,7 +18,7 @@ user.on('signedUp', () => {
 });
 
 user.on('signedUp/error', err => {
-  msg(err);
+  msg(err.msg);
 });
 
 user.on('signedIn', () => {
@@ -26,7 +26,7 @@ user.on('signedIn', () => {
 });
 
 user.on('signedIn/error', err => {
-  msg(err);
+  msg(err.msg);
 });
 
 user.on('signedOut', () => {
