@@ -107,7 +107,7 @@ module.exports = function() {
 
     userAPI.fetch = function() {
       return {
-        'userData': userData,
+        'data': userData,
         'status': userStatus()
       };
     }; // end of userAPI.fetch
@@ -417,21 +417,11 @@ module.exports = function() {
         // translate restful api by using cope.user
         switch (api) {
           case 'u/fetch': 
-            let userData = user.fetch().userData;
+            let userData = user.fetch().data,
+                userStatus = user.fetch().status;
             sendObj(userData ? 'signedIn' : 'signedOut', 
-                    userData,
+                    userData ? userData : userStatus,
                     reqId);
-            /*
-            getUser(user => {
-              let userData = user.fetch();
-              debug('u/fetch:userData', userData);
-              socket.emit('toClient', {
-                signal: userData ? 'signedIn' : 'signedOut',
-                reqId: reqId,
-                data: userData
-              });
-            });
-            */
             break;
           case 'u/signup':
             user.signUp(data).then(userStatus => {
@@ -447,7 +437,7 @@ module.exports = function() {
               // Share user data with express `req.session`
               // socket.handshake.session.userData = userData;
               // socket.handshake.session.save();
-              let userData = user.fetch().userData;
+              let userData = user.fetch().data;
               debug('u/signin', userData);
               sendObj('signedIn', userData, reqId);
             }).catch(function(err) {
@@ -489,12 +479,12 @@ module.exports = function() {
   // We use this method to set `db`.
   // `db` should be a function like this:
   // (params) => <Promise>promise
-  // where the db instance comes when resolved
-  // and the params should be {
+  // where the params should be {
   //  dbname: <string>,
-  //  username: <string>,
-  //  password: <string>
-  // }
+  //  ? username: <string>,
+  //  ? password: <string>
+  // },
+  // and the db instance comes on resolved
   // e.g.
   //   db({
   //     dbname: 'test',

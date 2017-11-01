@@ -13,27 +13,33 @@ document.getElementById('buttons').innerHTML = [
 
 user.fetch();
 
-user.on('signedUp', () => {
+user.on('signedUp', result => {
+  console.log(result);
   msg('Sign in again');
 });
 
-user.on('signedUp/error', err => {
-  msg(err.msg);
+user.on('signedUp/error', result => {
+  console.log(result);
+  msg(result.msg);
 });
 
-user.on('signedIn', () => {
+user.on('signedIn', result => {
+  console.log(result);
   msg('Welcome, ' + user.email);
 });
 
-user.on('signedIn/error', err => {
-  msg(err.msg);
+user.on('signedIn/error', result => {
+  console.log(result);
+  msg(result.msg);
 });
 
-user.on('signedOut', () => {
+user.on('signedOut', result => {
+  console.log(result);
   msg('Welcome, guest');
 });
 
-user.on('deleted', () => {
+user.on('deleted', result => {
+  console.log(result);
   msg('Deleted.');
 });
 

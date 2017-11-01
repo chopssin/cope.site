@@ -59,7 +59,7 @@
     reqSignUp.on('signedUp', data => {
       console.log('signedUp', data);
       resetUserData();
-      cbm.use('signedUp').call();
+      cbm.use('signedUp').call(null, data);
     }).on('signedUp/error', data => {
       cbm.use('signedUp/error').call(null, data);
     });
@@ -67,30 +67,30 @@
     reqSignIn.on('signedIn', data => {
       console.log('signedIn', data);
       updateUserData(data);
-      cbm.use('signedIn').call();
+      cbm.use('signedIn').call(null, data);
     }).on('signedIn/error', data => {
       cbm.use('signedIn/error').call(null, data);
     });
 
-    reqSignOut.on('signedOut', res => {
-      console.log('signedOut', res);
+    reqSignOut.on('signedOut', data => {
+      console.log('signedOut', data);
       resetUserData();
-      cbm.use('signedOut').call();
+      cbm.use('signedOut').call(null, data);
     });
 
     reqFetch.on('signedIn', data => {
       console.log('signedIn', data);
       updateUserData(data);
-      cbm.use('signedIn').call();
+      cbm.use('signedIn').call(null, data);
     }).on('signedOut', data => {
       console.log('signedOut', data);
       resetUserData();
-      cbm.use('signedOut').call();
+      cbm.use('signedOut').call(null, data);
     });
 
     reqDelete.on('deleted', data => {
       console.log('deleted', data);
-      cbm.use('deleted').call();
+      cbm.use('deleted').call(null, data);
     });
 
     user.fetch = function() {
