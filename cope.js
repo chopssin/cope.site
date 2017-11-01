@@ -1,7 +1,10 @@
-var debug = require('debug')('cope.site:cope');
+let debug = require('debug')('cope.site:cope');
+let fs = require('fs');
+let MongoClient = require('mongodb').MongoClient;
 
  
-// cope methods
+// cope
+// cope.util.readJSON: (<str>path, <func>callback) => <undefined>
 // cope.user: () => <obj>userAPI
 // cope.graph: (<str>graphId) => <obj>graphAPI
 // cope.useSocketIO: (<obj>socket) => <undefined>
@@ -9,7 +12,7 @@ var debug = require('debug')('cope.site:cope');
 module.exports = function() {
   let cope = {};
 
-  // Private variables
+  // Database API and configuration
   let db = null;
 
   // Utilities: private functions of object `cope`
@@ -26,80 +29,231 @@ module.exports = function() {
     return queue;
   }; // end of `makeQueue`
 
-  // cope.user() methods
+  // cope.util
+  // - readJSON: (<str>path, <func>callback) => <undefined>
+  cope.util = {};
+  cope.util.readJSON = function(path, callback) {
+    if (typeof callback == 'function') {
+      fs.readFile(path, 'utf8', (err, data) => {
+        let obj = null;
+        try {
+          obj = JSON.parse(data);
+        } catch (err) {
+          debug('cope.util.readJSON', err);
+          return;
+        }
+        debug('cope.util.readJSON: ' + path, obj);
+        callback(obj);
+      });
+    }
+    return;
+  }; // end of cope.util.readJSON
+
+  // cope.user()
   // - fetch: () => <obj>userData
   // - update: (<obj>userData) => <undefined>
+  // - signUp: (<obj>signUpParams) => <promise>
   // - signIn: (<obj>signInParams) => <promise>
-  // - signOut: (<obj>signOutParams) => <promise>
+  // - signOut: () => <promise>
+  // - deleteAccount: () => <promise>
   // - useSocketIO: (<obj>socket) => <undefined>
   cope.user = function() {
     var userAPI = {};
 
     // Private variables
-    let userData = null;
+    let userData = null,
+        updateSocketData = function() {}; // will be overwritten by userAPI.useSocketIO
+
+    let updateUserData = function(params) {
+      if (!params || typeof params != 'object') {
+        userData = null;
+      } else { 
+        userData = {};
+        userData.id = params.id;
+        userData.email = params.email;
+      }
+
+      try {
+        updateSocketData(userData);
+      } catch (err) { debug(err); }
+      return;
+    }; // end of updateUserData
+
+    let clearUserData = function() {
+      return updateUserData(null);
+    }; // end of clearUserData
 
     userAPI.fetch = function() {
       return userData;
     }; // end of userAPI.fetch
 
-    userAPI.update = function(params) {
-      if (!params || typeof params != 'object') {
-        userData = null;
-        return;
-      } 
-      userData = {};
-      userData.id = params.id;
-      userData.email = params.email;
-      return;
-    }; // end of userAPI.update
+    userAPI.signUp = function(params) {
+      clearUserData();
+      return new Promise((resolve, reject) => {
+        try {
+          let email = params && params.email;
+          debug('user.signUp: attemp to sign up', params);
+          db({
+            dbname: 'testDB'
+          }).then(db => {
+            debug('sucessfully connect to the db');
+            db.collection('users').find({ 'email': email }).toArray((err, docs) => {
+              if (err || !Array.isArray(docs)) {
+                debug(err);
+                db.close();
+                return;
+              }
+
+              if (docs.length > 0) {
+                debug('User "' + email + '" already existed');
+                reject('User "' + email + '" already existed');
+                db.close();
+              } else if (docs.length === 0) {
+                db.collection('users').insertOne(params, (err, result) => {
+                  if (err) { debug(); }
+                  if (result && result.insertedCount === 1) {
+                    debug('user.signUp: ' + (params && params.email) + ' signed up successfully');
+                    resolve(params);
+                  }
+                  db.close();
+                }); // end of signing up the user
+              } // end of else if
+            }); // end of finding user by email
+          }); // end of db().then() 
+        } catch (err) {
+          debug(err);
+        } 
+      }); // end of Promise
+    }; // end of userAPI.signUp
 
     userAPI.signIn = function(params) {
+      clearUserData();
       return new Promise(function(resolve, reject) {
-        // TBD: validate params
-        //if (!params) { 
-        //  promise.reject();
-        //}
-        setTimeout(function() {
-          userData = {};
-          userData.id = 'fakeID';
-          userData.email = params.email;
-          resolve(userData);
-        }, 300);
+        try {
+          db({
+            dbname: 'testDB',
+          }).then(db => {
+            
+            let email = params && params.email;
+            let password = params && params.password;
+            db.collection('users').find({ 'email': email }).toArray((err, docs) => {
+              if (err) { 
+                debug(err); 
+                reject(err);
+              }
+              debug('user.signIn', docs);
+              if (!docs || docs.length === 0) {
+                debug('User "' + email + '" not found');
+                reject('User "' + email + '" not found');
+              } else if (docs.length === 1) {
+
+                if (docs[0].password != password) {
+                  debug('Wrong password of user "' + email + '"');
+                  reject('Wrong password of user "' + email + '"');
+                  return;
+                }
+
+                userData = function(doc) {
+                  return {
+                    id: 'fakeId',
+                    email: doc.email
+                  }
+                }(docs[0]);
+
+                updateUserData(userData);
+
+                resolve(userData);
+              } else {
+                debug('Found multiple users of "' + email + '"');
+                reject('Found multiple users of "' + email + '"');
+              }
+            
+              db.close();
+            }); // end of db.find().toArray()
+          }).catch(err => {
+            debug(err);
+            debug('failed to connect to db `testDB`');
+          });
+        
+        } catch (err) {
+          debug(err);
+        }
       }); // end of Promise
     }; // end of userAPI.signIn
 
     userAPI.signOut = function() {
+      clearUserData();
       return new Promise(function(resolve, reject) {
-        // TBD: use db
-        setTimeout(function() {
-          debug('user.signOut', userData.id, userData.email);
-          userData = null;
-          resolve(userData);
-        }, 1000);
+        debug('user.signOut: clear up `userData`');
+        resolve(userData);
       });
     }; // end of userAPI.signOut
+
+    userAPI.deleteAccount = function() {
+      return new Promise((resolve, reject) => {
+        let email = userData && userData.email;
+        if (!email) {
+          debug('user.deleteAccount: userData is null');
+          reject('user.deleteAccount: userData is null');
+          return;
+        }
+
+        try {
+          db({ dbname: 'testDB' }).then(db => {
+            db.collection('users').findOneAndDelete({ 'email': email }, (err, result) => {
+              if (err) { 
+                debug(err); 
+                reject(err);
+              } else {
+                debug('user.deleteAccount: user "' + email + '" deleted');
+                clearUserData();
+                userAPI.signOut().then(() => {
+                  resolve({ 'status': 'ok' });
+                });
+              }
+              db.close();
+            });
+          });
+        } catch (err) {
+          debug(err);
+        }
+      }); 
+    }; // end of userAPI.deleteAccount
     
     userAPI.useSocketIO = function(socket) {
+
+      // Overwrite the outer variable
+      updateSocketData = function(userData) {
+        try {
+          debug('updateSocketData', userData);
+          socket.handshake.session.userData = userData; // TBD: Not working???
+          socket.handshake.session.save();
+        } catch (err) {
+          debug(err);
+        }
+      }; // end of updateSocketData
+
       let checkData = socket && socket.handshake 
                       && socket.handshake.session
                       && socket.handshake.session.userData;
       if (checkData && checkData.email) {
         debug('cope.user: found signed-in user: ', checkData.email);
-        userAPI.update(checkData);
+        updateUserData(checkData);
       }
+
       return;
     }; // end of userAPI.useSocketIO
     
     return userAPI;
-  }; // end of `user` of object `cope`
+  }; // end of cope.user
 
-  // cope.graph() methods
+  // cope.graph() 
   // - node: (? <str>nodeId) => <obj>nodeAPI
   // - useSocketIO: (<obj>socket) => <undefined>
   cope.graph = function(graphId) {
     let graphAPI = {};
 
-    // graphAPI.node() methods
+    // graphAPI.node()
     // - val: () => <obj>nodeAPI, 
     //        (<str>) => <obj>nodeAPI,
     //        (<obj>) => <obj>nodeAPI,
@@ -158,6 +312,9 @@ module.exports = function() {
   //
   // So if one day we ditch socket.io, this method should be fully rewitten!
   cope.useSocketIO = function(s) {
+
+    debug('cope.useSocketIO: use socket');
+
     let socket = s, 
         user = cope.user(); // cope user API
     
@@ -244,27 +401,40 @@ module.exports = function() {
             });
             */
             break;
+          case 'u/signup':
+            user.signUp(data).then(userData => {
+              debug('u/signup', userData);
+              sendObj('signedUp', { 'status': 'ok' }, reqId);
+            }).catch(function(err) {
+              sendObj('signedUp/error', err, reqId);
+            });
+            break;
           case 'u/signin':
             user.signIn(data).then(function(userData) {
 
               // Share user data with express `req.session`
-              socket.handshake.session.userData = userData;
-              socket.handshake.session.save();
+              // socket.handshake.session.userData = userData;
+              // socket.handshake.session.save();
 
               debug('u/signin', userData);
               sendObj('signedIn', userData, reqId);
             }).catch(function(err) {
-              // TBD
+              sendObj('signedIn/error', err, reqId); 
             });
             break;
           case 'u/signout': 
-            user.signOut(data).then(function(userData) {
+            user.signOut().then(function() {
 
               // Clear user data in express `req.session`
               socket.handshake.session.userData = null;
               socket.handshake.session.save();
 
               sendObj('signedOut', null, reqId);
+            });
+            break;
+          case 'u/delete':
+            user.deleteAccount().then(() => {
+              sendObj('deleted', null, reqId);
             });
             break;
           case 'g/node/set': 
@@ -284,11 +454,82 @@ module.exports = function() {
     return;
   }; // end of cope.useSocketIO
 
-  cope.useMongoDb = function(mongo) {
-    // TBD: deal with mongo and modify external `db`
-    db = function() {
+  // We use this method to set `db`.
+  // `db` should be a function like this:
+  // (params) => <Promise>promise
+  // where the db instance comes when resolved
+  // and the params should be {
+  //  dbname: <string>,
+  //  username: <string>,
+  //  password: <string>
+  // }
+  // e.g.
+  //   db({
+  //     dbname: 'test',
+  //     username: 'aca',
+  //     password: '123456'
+  //   }).then(db => { ... });
+  cope.useMongoDb = function(params) {
+
+    // TBD: Initialize System Admin User
+    cope.util.readJSON('./config/credentials.json', obj => {
+      config({
+        host: obj.MONGODB_HOST,
+        port: obj.MONGODB_PORT
+      });
+    });
+
+    function config(obj) {
+      let host = obj.host;
+      let port = obj.port;
+      if (!host || !port) {
+        return;
+      }
+
+      let baseURL = host + ':' + port;
+
+      debug('cope.useMongoDb: set `db`');
+      db = function(params) {
+        if (typeof params != 'object') {
+          params = {};
+        }
+
+        let url = baseURL,
+            dbname = params.dbname,
+            username = params.username,
+            password = params.password;
+
+        return new Promise((resolve, reject) => {
+
+          // Deal with `url`
+          if (dbname) {
+            url = url + '/' + dbname;
+          } else {
+            debug('`dbname` is not specified');
+            reject('`dbname` is not specified');
+            return;
+          }
+
+          if (username && password) {
+            url = username + ':' + password + '@' + url; 
+          }
+
+          url = 'mongodb://' + url; debug('url = ' + url);
+
+          MongoClient.connect(url, (err, db) => {
+            if (err) {
+              debug(err);
+              reject(err);
+            } else {
+              resolve(db);
+            }
+            return;
+          });
+          return;
+        }); // end of new Promise
+      }; // end of `db`
+    }; // end of `config` in cope.useMongoDb
     
-    };
     return;
   }; // end of cope.useMongoDb
 

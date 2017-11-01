@@ -11,8 +11,6 @@ var sess = app.get('sess');
 var sharedsession = require('express-socket.io-session');
 var cope = require('../cope'); 
 
-// TBD: cope.configDb(db);
-
 /**
  * Get port from environment and store in Express.
  */
@@ -51,10 +49,14 @@ io.on('connection', function(socket) {
     debug('Error', 'Failed to use cope');
   }
 
-  // Use Cope
-  debug('socket.io: start to use cope');
   cope.useSocketIO(socket);
 });
+
+/**
+ * Integrate MongoDB
+ */
+cope.useMongoDb();
+
 
 /**
  * Listen on provided port, on all network interfaces.

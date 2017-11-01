@@ -1,34 +1,85 @@
 let user = cope.user(),
     graph = cope.graph('fakeApp');
 
+document.getElementById('buttons').innerHTML = [
+  'signUp', 
+  'signInWrongly', 
+  'signIn', 
+  'signOut', 
+  'deleteAccount',
+  'post'
+].map(x => '<button onclick="' + x + '()">' + x + '</button>')
+.join('');
+
 user.fetch();
 
+user.on('signedUp', () => {
+  msg('Sign in again');
+});
+
+user.on('signedUp/error', err => {
+  msg(err);
+});
+
 user.on('signedIn', () => {
-  document.getElementById('msg').innerHTML = '<p>Welcome, ' + user.email 
-    + '</p><button onclick="signOut()">Sign out</button>'
-    + '<button onclick="post()">Post</button>'
+  msg('Welcome, ' + user.email);
+});
+
+user.on('signedIn/error', err => {
+  msg(err);
 });
 
 user.on('signedOut', () => {
-  document.getElementById('msg').innerHTML = '<button onclick="signIn()">Sign in</button>';
+  msg('Welcome, guest');
 });
 
-function signIn() {
+user.on('deleted', () => {
+  msg('Deleted.');
+});
+
+function msg(text) {
+  document.getElementById('msg').innerHTML = '<p>' + text + '</p>';
+};
+
+function signInWrongly() {
+  msg('Trying to sign in with wrong password ...');
   user.signIn({
     email: 'taster@aca.com',
-    password: 'adadadad'
+    password: 'cccccadada'
   })
 };
 
+function signIn() {
+  msg('Trying to sign in ...');
+  user.signIn({
+    email: 'taster@aca.com',
+    password: 'adada'
+  })
+};
+
+function signUp() {
+  msg('Trying to sign up ...');
+  user.signUp({ 
+    email: 'taster@aca.com', 
+    password: 'adada' 
+  });
+};
+
 function signOut() {
+  msg('Trying to sign out ...');
   user.signOut();
 };
 
+function deleteAccount() {
+  msg('Trying to delete the account ...');
+  user.deleteAccount();
+};
+
 function post() {
-  let newpost = graph.node();
-  newpost.val({
-    title: 'Created at ' + new Date()
-  });
+  //let newpost = graph.node();
+  //newpost.val({
+  //  title: 'Created at ' + new Date()
+  //});
   //newPost.tag('post');
   //newPost.scope({ w: 'me', r: 'group/VIP' });
   

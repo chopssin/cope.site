@@ -1,110 +1,152 @@
 (function(util, ui) {
+  // cope
+  // - ui
+  // - user: () => <obj>userAPI
+  // - graph: (<str>graphId) => <obj>graphAPI
   let cope = {};
+  cope.ui = ui; // TBD: export ui
 
   let conn = util.conn; // used by #user, #graph
 
-  cope.ui = ui; // export ui
-  cope.user = user;
-  cope.graph = graph;
-
-  // cope.user
-  function user() {
-    let user = {};
+  
+  // cope.user()
+  // - id: <str>
+  // - email: <str>
+  // - fetch: () => <obj>userData
+  // - signUp: (<obj>userInputs) => <obj>userAPI
+  // - signIn: (<obj>userInputs) => <obj>userAPI
+  // - signOut: () => <obj>userAPI
+  // - deleteAccount: () => <obj>userAPI
+  // - once: () => <obj>userAPI
+  // - on: () => <obj>userAPI
+  cope.user = function() {
+    let user = {}; // user API 
 
     // Initialize `user`
     user.id = '';
     user.email = '';
-    user.fetch = fetch;
-    user.signIn = signIn;
-    user.signOut = signOut;
-    user.once = once;
-    user.on = on;
-    user.update = update;
-    user.clear = clear;
+
+    //user.update = update;
+    //user.clear = clear;
 
     // Private variables
     let cbm = util.makeCallbackManager(),
+        reqSignUp = conn.req('u/signup'),
         reqSignIn = conn.req('u/signin'),
         reqSignOut = conn.req('u/signout'),
-        reqFetch = conn.req('u/fetch');
+        reqFetch = conn.req('u/fetch'),
+        reqDelete = conn.req('u/delete');
+
+    let resetUserData = function() {
+      user.id = '';
+      user.email = '';
+      return;
+    }; // end of `resetUserData`
+
+    let updateUserData = function(userData) {
+      if (typeof userData != 'object' || !userData) {
+        resetUserData();
+        return;
+      } 
+      if (typeof userData.id == 'string' 
+          && typeof userData.email == 'string') {
+        user.id = userData.id;
+        user.email = userData.email;
+      }
+      return;
+    }; // end of `updateUserData`
+
+    reqSignUp.on('signedUp', data => {
+      console.log('signedUp', data);
+      resetUserData();
+      cbm.use('signedUp').call();
+    }).on('signedUp/error', data => {
+      cbm.use('signedUp/error').call(null, data);
+    });
 
     reqSignIn.on('signedIn', data => {
       console.log('signedIn', data);
-      user.update(data);
+      updateUserData(data);
       cbm.use('signedIn').call();
+    }).on('signedIn/error', data => {
+      cbm.use('signedIn/error').call(null, data);
     });
 
     reqSignOut.on('signedOut', res => {
       console.log('signedOut', res);
-      user.clear();
+      resetUserData();
       cbm.use('signedOut').call();
     });
 
     reqFetch.on('signedIn', data => {
       console.log('signedIn', data);
-      user.update(data);
+      updateUserData(data);
       cbm.use('signedIn').call();
     }).on('signedOut', data => {
       console.log('signedOut', data);
-      user.clear();
+      resetUserData();
       cbm.use('signedOut').call();
     });
 
-    // Functions for `user` public methods
-    function fetch() {
+    reqDelete.on('deleted', data => {
+      console.log('deleted', data);
+      cbm.use('deleted').call();
+    });
+
+    user.fetch = function() {
+      resetUserData();
       reqFetch.send();
       return user;
-    };
+    }; // end of user.fetch
+    
+    user.signUp = function(inputs) {
+      // TBD
+      resetUserData();
+      reqSignUp.send(inputs);
+      return user;
+    }; // end of user.signUp
 
-    function signIn(inputs) {
+    user.signIn = function(inputs) {
+      resetUserData();
       reqSignIn.send(inputs);
       return user;
-    }; // end of signIn
+    }; // end of user.signIn
 
-    function signOut() {
+    user.signOut = function() {
+      resetUserData();
       reqSignOut.send();
       return user;
-    }; // end of signOut
+    }; // end of user.signOut
 
-    function once(name, callback) {
+    user.deleteAccount = function() {
+      resetUserData();
+      reqDelete.send();
+      return user;
+    }; // end of user.deleteAccount
+
+    user.once = function(name, callback) {
       cbm.setOnce(name, callback);
       return user;
-    }; // end of once
+    }; // end of user.once
 
-    function on(name, callback) {
+    user.on = function(name, callback) {
       cbm.set(name, callback);
       return user;
-    }; // end of on
-
-    function update(userData) {
-      if (typeof userData != 'object' || !userData) {
-        clear();
-        return;
-      } 
-      user.id = userData.id;
-      user.email = userData.email;
-      return;
-    }; // end of update
-
-    function clear() {
-      user.id = '';
-      user.email = '';
-      return;
-    }; // end of clear
+    }; // end of user.on
 
     return user;
   }; // end of user for cope.user
 
-  function graph(graphId) {
+  // cope.graph()
+  // - id: <str>graphId
+  // - node: (? <str>nodeId) => nodeAPI
+  cope.graph = function(graphId) {
     let graph = {};
-    graph.id = graphId;
-    graph.node = node;
-    graph.link = link;
 
     // Private variables
     let cbm = util.makeCallbackManager();
 
-    function node() {
+    graph.node = function() {
       let node = {};
       node.val = val;
       node.then = then;
@@ -236,15 +278,10 @@
       }; // end of get
 
       return node;
-    }; // end of node
-
-    function link() {
-      let link = {};
-      return link; 
-    }; // end of link
+    }; // end of graph.node
 
     return graph;
-  }; // end of graph for cope.graph 
+  }; // end of cope.graph 
 
   if (window.cope) {
     console.error('cope was already defined');
@@ -253,18 +290,16 @@
   }
   return false;
 })(function(io) { // io = socket.io
-  // Define util: config with socket.io 
-  // to deal with data transmission on connection
+  // util
+  // - conn: <obj>connAPI
+  // - makeCallbackManager: () => <obj>callbackManagerAPI
+  // - makeId: (<number>length) => <str>
+  // - makeIdWithTime: (<number>length) => <str>
+  // - makeTimestampWithId: () => <str>
+  // - makeQueue: () => <obj>queueAPI
   let util = {};
 
-  util.conn = makeConn(io); // contruct `conn`
-  util.makeCallbackManager = makeCallbackManager;
-  util.makeId = makeId;
-  util.makeIdWithTime = makeIdWithTime;
-  util.makeTimestampWithId = makeTimestampWithId;
-  util.makeQueue = makeQueue;
-
-  function makeConn(io) {
+  util.conn = function(io) {
     let conn = {};
     conn.req = req;
 
@@ -274,7 +309,7 @@
           let callbacks = {};
           return function(signal) {
             if (!callbacks[signal]) {
-              callbacks[signal] = makeCallbackManager();
+              callbacks[signal] = util.makeCallbackManager();
             } 
             return callbacks[signal]; // callback manager for signal
           };
@@ -310,7 +345,7 @@
       req.send = send;
 
       // Private variables
-      let reqId = makeTimestampWithId();
+      let reqId = util.makeTimestampWithId();
 
       function on(signal, cb) {
         connCb(signal).set(reqId, cb);   
@@ -334,9 +369,9 @@
     }; // end of req
 
     return conn;
-  }; // end of makeConn
+  }(io); // end of util.conn
 
-  function makeCallbackManager() {
+  util.makeCallbackManager = function() {
     let cbm = {};
     cbm.set = set;
     cbm.setOnce = setOnce;
@@ -398,9 +433,9 @@
     }; // end of useAll
 
     return cbm;
-  }; // end of makeCallbackManager
+  }; // end of util.makeCallbackManager
 
-  function makeId(len) {
+  util.makeId = function(len) {
     var text = "";
     var seeds = "_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
@@ -412,22 +447,22 @@
       text += seeds.charAt(Math.floor(Math.random() * seeds.length));
     }
     return text;
-  }; // end of makeId
+  }; // end of util.makeId
 
-  function makeIdWithTime(len) {
+  util.makeIdWithTime = function(len) {
     let str = (new Date().getTime()).toString(36);
     len = (typeof len == 'number' && len > 0) 
       ? len 
       : 5; // Five characters by default
 
-    return (str + makeId(len - str.length)).slice(0, len);
-  }; // end of makeIdWithTime
+    return (str + util.makeId(len - str.length)).slice(0, len);
+  }; // end of util.makeIdWithTime
 
-  function makeTimestampWithId() {
-    return new Date().getTime() + '_' + makeId();
-  }; // end of makeTimestampWithId
+  util.makeTimestampWithId = function() {
+    return new Date().getTime() + '_' + util.makeId();
+  }; // end of util.makeTimestampWithId
 
-  function makeQueue() {
+  util.makeQueue = function() {
     let q = {};
     q.add = add;
     q.next = next;
@@ -451,7 +486,7 @@
     }; // end of next
 
     return q;
-  }; // end of makeQueue
+  }; // end of util.makeQueue
 
   return util;
 }(io), function() {
