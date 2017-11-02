@@ -147,6 +147,7 @@
     let cbm = util.makeCallbackManager();
 
     // graph.node(? <str>nodeId)
+    // - id: () => <str>nodeId || <null>
     // - fetch: () => <obj>nodeAPI
     // - save: (<obj>updates)  
     //   || (<str>key, <mixed>value) 
@@ -175,6 +176,10 @@
         nodeData = res.data;
         nodeId = res.id;
       }; // end of updateNodeData
+
+      nodeAPI.id = function() {
+        return nodeId;
+      }; // end of nodeAPI.id
 
       nodeAPI.fetch = function() { // get all data
         queue.add(() => {
