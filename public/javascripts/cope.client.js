@@ -146,138 +146,132 @@
     // Private variables
     let cbm = util.makeCallbackManager();
 
-    graph.node = function() {
-      let node = {};
-      node.val = val;
-      node.then = then;
-      node.snap = snap;
-      node.tag = tag;
-      node.alias = alias;
-      node.scope = scope;
+    // graph.node(? <str>nodeId)
+    // - fetch: () => <obj>nodeAPI
+    // - save: (<obj>updates)  
+    //   || (<str>key, <mixed>value) 
+    //   => <obj>nodeAPI, overwrite the original node
+    // - update: (<obj>updates)  
+    //   || (<str>key, <mixed>value) 
+    //   => <obj>nodeAPI, update the original node
+    // - then: (<func>callback) => <obj>nodeAPI
+    // - snap: () => <obj>currentNodeData
+    // - tag: (<str>tagname) => <obj>nodeAPI
+    // - removeTag: (<str>tagname) => <obj>nodeAPI
+    // - alias: (<str>alias) => <obj>nodeAPI
+    // - scope: (<obj>{ w: <str>, r: <str> }) => <obj>nodeAPI
+    graph.node = function(nodeId) {
+
+      nodeId = nodeId || null;
+
+      let nodeAPI = {};
 
       // Private variables
-      let nodeId = util.makeIdWithTime(16),
-          data = {},
-          nodeAlias = null,
+      let nodeData = null,
+          nodeAlias = util.makeIdWithTime(16), // default alias
           queue = util.makeQueue();
 
-      console.log('nodeId', nodeId);
+      let updateNodeData = function(res) {
+        nodeData = res.data;
+        nodeId = res.id;
+      }; // end of updateNodeData
 
-      function val() {
-        let args = arguments;
-        switch (args.length) {
-          case 0: // get all values
-            return get();
-            break;
-          case 1: // get(key) or set(values)
-            if (typeof args[0] == 'string') {
-              return get(args[0]);
-            } else {
-              return set(args[0]);
-            }
-            break;
-          case 2: // set(key, value)
-            return set(args[0], args[1]);
-            break;
-          default: // throw error
-        };
-        return console.error('node.val: invalid use of `val`');
-      }; // end of val
+      nodeAPI.fetch = function() { // get all data
+        queue.add(() => {
+          conn.req('g/node/fetch').once('ok', res => {
+            console.log('g/node/fetch', res);
+            updateNodeData(res);
+            queue.next();
+          }).send({
+            graphId: graphId,
+            nodeId: nodeId
+          });
+        });
+        return nodeAPI;
+      }; // end of nodeAPI.fetch
 
-      function then() {
-        return node;
-      }; // end of then
+      nodeAPI.save = function(a, b) { // this will overwrite the orignal node data
+        let newData = {};
 
-      function snap() {
-        return data; 
-      }; // end of snap
-
-      function alias() {
-        return node;
-      };
-
-      function tag() {
-        return node;
-      };
-
-      function scope(params) { // { w:<str>, r:<str> }
-        return node; 
-      };
-
-      // Private functions in function `node`
-      function set() {
-        let args = arguments;
-        
-        // Initialize `data` if necessary
-        if (!data) { 
-          data = {}; 
-        } 
-
-        switch (args.length) {
-          case 1: // set(values)
-            if (typeof args[0] == 'object') {
-
-              // Update local node data
-              for (let name in args[0]) {
-                data[name] = args[0][name];
-              }
-
-              // Make the request
-              queue.add(() => {
-                conn.req('g/node/set').once('saved', () => {
-                  queue.next();
-                }).send({
-                  graphId: graphId,
-                  nodeId: nodeId,
-                  updates: args[0]
-                });
-              });
-
-              return node;
-            }
-            break;
-          case 2: // set(key, value)
-            if (typeof args[0] == 'string') {
-              
-              let sentData = {};
-              sentData[args[0]] = args[1];
-
-              // Update local node data
-              data[args[0]] = args[1];
-              
-              // Make the request
-              queue.add(() => {
-                conn.req('g/node/set').once('saved', () => {
-                  queue.next();
-                }).send({
-                  graphId: graphId,
-                  values: sentData
-                });
-              });
-
-              return node;
-            }
-            break;
-          default: // throw error
+        if (typeof a == 'string') {
+          newData[a] = b;
+        } else if (typeof a == 'object') {
+          newData = Object.assign({}, a);
         }
-        return;
-      }; // end of set
 
-      function get() {
-        let args = arguments;
-        switch (args.length) {
-          case 0: // get all values
+        // Make the request
+        queue.add(() => {
+          conn.req('g/node/save').on('saved', res => {
+            console.log('g/node/save', res);
+            updateNodeData(res);
+            queue.next();
+          }).send({
+            graphId: graphId,
+            nodeId: nodeId,
+            newData: newData
+          });
+        });
+        return nodeAPI;
+      }; // end of nodeAPI.save
 
-            return node;
-            break;
-          case 1: // get(key)
-            break;
-          default: // throw error
+      nodeAPI.update = function(a, b) { // set all updates
+        let updates = {};
+
+        if (typeof a == 'string') {
+          updates[a] = b;
+        } else if (typeof a == 'object') {
+          updates = Object.assign({}, a);
         }
-        return;
-      }; // end of get
 
-      return node;
+        // Make the request
+        queue.add(() => {
+          conn.req('g/node/update').on('updated', res => {
+            console.log('g/node/update', res);
+            updateNodeData(res);
+            queue.next();
+          }).send({
+            graphId: graphId,
+            nodeId: nodeId,
+            updates: updates
+          });
+        });
+        return nodeAPI;
+      }; // end of nodeAPI.update
+
+      nodeAPI.then = function(callback) {
+        if (typeof callback == 'function') {
+          queue.add(() => {
+            callback();
+            queue.next();
+          });
+        }
+        return nodeAPI;
+      }; // end of nodeAPI.then
+
+      nodeAPI.snap = function() {
+        return nodeData; 
+      }; // end of nodeAPI.snap
+
+      nodeAPI.alias = function(name) {
+        // TBD: ...
+        return nodeAPI;
+      }; // end of nodeAPI.alias
+
+      nodeAPI.tag = function(tagName) {
+        // TBD: ...
+        return nodeAPI;
+      }; // end of nodeAPI.tag
+
+      nodeAPI.removeTag = function(tagName) {
+        // TBD: ...
+        return nodeAPI;
+      }; // end of nodeAPI.removeTag
+
+      nodeAPI.scope = function(params) { // { w:<str>, r:<str> }
+        return nodeAPI;
+      }; // end of nodeAPI.scope
+
+      return nodeAPI;
     }; // end of graph.node
 
     return graph;
@@ -469,12 +463,12 @@
 
     // Private variables
     let funcs = [],
-        running = null,
-        idx = -1;
+        running = null;
 
     function add(fn) { // q.add(next => { ... });
       funcs = funcs.concat(fn);
       if (!running) { next(); }
+      return;
     }; // end of add
 
     function next() {
@@ -483,6 +477,7 @@
         funcs = funcs.slice(1);
         running.apply(null, arguments);
       }
+      return;
     }; // end of next
 
     return q;

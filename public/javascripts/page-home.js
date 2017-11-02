@@ -82,10 +82,15 @@ function deleteAccount() {
 };
 
 function post() {
-  //let newpost = graph.node();
-  //newpost.val({
-  //  title: 'Created at ' + new Date()
-  //});
+  let newpost = graph.node();
+    
+  console.log(newpost.snap());
+  
+  newpost.save({
+    title: 'SPACE: Solutions to Problems with Auxiliary Details as well as Causes and Examples'
+  }).then(() => {
+    console.log(newpost.snap());
+  });
   //newPost.tag('post');
   //newPost.scope({ w: 'me', r: 'group/VIP' });
   

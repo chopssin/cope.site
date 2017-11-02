@@ -1,7 +1,8 @@
 let debug = require('debug')('cope.site:cope');
 let fs = require('fs');
 let MongoClient = require('mongodb').MongoClient;
- 
+let ObjectId = require('mongodb').ObjectId;
+
 // cope
 // cope.util.readJSON: (<str>path, <func>callback) => <undefined>
 // cope.user: () => <obj>userAPI
@@ -17,13 +18,25 @@ module.exports = function() {
   // Utilities: private functions of object `cope`
   let makeQueue = function() {
     let queue = {};
+
+    let funcs = [],
+        running = null;
         
-    queue.add = function() {
-      
+    queue.add = function(fn) {
+      if (typeof fn == 'function') {
+        funcs = funcs.concat(fn);
+      }
+      if (!running) { queue.next(); }
+      return;
     }; // end of queue.add
 
     queue.next = function() {
-    
+      if (funcs.length > 0) {
+        running = funcs[0];
+        funcs = funcs.slice(1);
+        running.apply(null, arguments);
+      }
+      return;
     }; // end fo queue.next
     return queue;
   }; // end of `makeQueue`
@@ -283,51 +296,175 @@ module.exports = function() {
   // - node: (? <str>nodeId) => <obj>nodeAPI
   // - useSocketIO: (<obj>socket) => <undefined>
   cope.graph = function(graphId) {
+
+    graphId = graphId || 'testGraph';
+
     let graphAPI = {};
 
-    // graphAPI.node()
-    // - val: () => <obj>nodeAPI, 
-    //        (<str>) => <obj>nodeAPI,
-    //        (<obj>) => <obj>nodeAPI,
-    //        (<str>, <mixed>) => <obj>nodeAPI
+    // graphAPI.node(? <str>nodeId)
+    // - nodeId: <string>
+    // - nodeData: <mixed>
+    // - nodeMeta: <obj>
+    // - fetch: () => <obj>nodeAPI,
+    // - create: () => <obj>nodeAPI,
+    // - save: (<obj>) || (<str>, <mixed>) => <obj>nodeAPI
+    // - update: (<obj>) || (<str>, <mixed>) => <obj>nodeAPI
+    // - meta: (<obj>ops || (<str>, <mixed>)) =>  <obj>nodeAPI
     // - then: () => <obj>nodeAPI
-    // - snap: () => <obj>nodeData
-    graphAPI.node = function() {
+    // - snap: () => <obj>nodeValue, {
+    //   id, data, meta
+    // }
+    graphAPI.node = function(nodeId) {
+
       let nodeAPI = {};
+      nodeAPI.nodeId = nodeId || null;
+      nodeAPI.nodeData = {}; // current snap data
+      nodeAPI.nodeMeta = {}; // current snap meta
 
-      // Private variables
-      let nodeData = {};
+      let queue = makeQueue();
 
-      let set = function(updates) {
-        if (typeof updates != 'object') {
-          return console.error('graph.node: invalid use of `set`');
-        }
-        for (let name in updates) {
-          nodeData[name] = updates[name]; 
-        }
-        // TBD: update to database
-        // TBD: use queue.add
+      let updateNodeValue = function(value) {
+        debug('updateNodeValue', value);
+        nodeAPI.nodeData = Object.assign({}, value && value.nodeData);
+        delete value.nodeId;
+        delete value.nodeData;
+        nodeAPI.nodeMeta = value;
+      }; // end of updateNodeValue
+
+      nodeAPI.create = function() {
+        try { 
+          queue.add(() => {
+            debug('nodeAPI.create()');
+            db({ dbname: graphId }).then(db => {
+              db.collection('nodes').insertOne({ 
+                createdAt: new Date().getTime() 
+              }, (err, res) => {
+                if (err) { 
+                  debug(err); 
+                } else {
+                  nodeAPI.nodeId = res.insertedId.toString();
+                }
+                queue.next();
+                db.close();
+              }); // end of ...insertOne
+            }); // end of using db
+          }); // end of queue.add()
+        } catch (err) {
+          debug(err);
+        } 
         return nodeAPI;
-      }; // end of `set`
-      
-      let get = function() {
-        // TBD: use queue.add
-        // TBD: read from database
-        // update nodeData
-        // call resolve function
+      }; // end of nodeAPI.create
+
+      nodeAPI.save = function(a, b) {
+        try {
+          queue.add(() => {
+            if (!nodeAPI.nodeId) {
+              debug('ERROR/nodeAPI.save: nodeId not found');
+              queue.next();
+              return;
+            }
+            debug('nodeAPI.save(a, b)', a, b);
+
+            let newData = {};
+            if ((arguments.length === 1) && (typeof a == 'object')) {
+              newData = a;
+            } else if ((arguments.length == 2) && (typeof a == 'string')) {
+              newData[a] = b;
+            } else {
+              queue.next();
+              return;
+            }
+
+            db({ 'dbname': graphId }).then(db => {
+              let query = {};
+              query._id = ObjectId(nodeAPI.nodeId);
+              db.collection('nodes').findOneAndUpdate(query
+                , { $set: { 'nodeData': newData } }
+                , { returnNewDocument: true }
+                , (err, res) => {
+                if (err) { 
+                  debug(err); 
+                } else {
+                  debug(res);
+                  debug('nodeAPI.save(a, b)', res.value);
+                  updateNodeValue(Object.assign({}
+                        , res && res.value
+                        , { nodeData: newData }));
+                }
+                queue.next();
+                db.close();
+              }); // end of ...findOneAndUpdate
+            }); // end of db().then()
+          }); // end of queue.add()
+        } catch (err) {
+          debug(err);
+        }
         return nodeAPI;
-      }; // end of `get`
+      }; // end of nodeAPI.save
 
-      nodeAPI.val = function() {
-        return nodeAPI; 
-      }; // end of nodeAPI.val
+      nodeAPI.meta = function(a, b) {
+        try {
+          queue.add(() => {
+            if (!nodeAPI.nodeId) {
+              debug('ERROR/nodeAPI.meta: nodeId not found');
+              queue.next();
+              return;
+            }
+            debug('nodeAPI.meta(a, b)', a, b);
 
-      nodeAPI.then = function() {
+            let metaUpdates = {};
+            if ((typeof a == 'string') && (arguments.length === 2)) {
+              metaUpdates[a] = b;
+            } else if (typeof a  == 'object') {
+              metaUpdates = a;
+            } else {
+              queue.next();
+              return;
+            }
+            
+            let query = {};
+            query._id = ObjectId(nodeAPI.nodeId);
+
+
+            db({ dbname: graphId }).then(db => {
+              db.collection('nodes').findOneAndUpdate(query
+                , { $set: metaUpdates }
+                , { returnNewDocument: true }
+                , (err, res) => {
+                if (err) { 
+                  debug(err); 
+                } else {
+                  debug('nodeAPI.meta(a, b)', res);
+                  updateNodeValue(Object.assign({}
+                        , res && res.value
+                        , metaUpdates));
+                }
+                queue.next();
+                db.close();
+              }); // end of ...findOneAndUpdate
+            }); // end of db().then()
+          }); // end of queue.add()
+        } catch (err) {
+          debug(err);
+        }
+        return nodeAPI;
+      }; // end of nodeAPI.meta
+
+      nodeAPI.then = function(callback) {
+        queue.add(() => {
+          if (typeof callback == 'function') {
+            callback();
+            queue.next();
+          }
+        });
         return nodeAPI; 
       }; // end of nodeAPI.then
 
       nodeAPI.snap = function() {
-        return nodeData; 
+        return {
+          id: nodeAPI.nodeId,
+          data: nodeAPI.nodeData
+        };
       }; // end of nodeAPI.snap
 
       return nodeAPI;
@@ -459,13 +596,34 @@ module.exports = function() {
               sendObj('deleted', userStatus, reqId);
             });
             break;
-          case 'g/node/set': 
-            cope.graph(data.graphId)
-              .node(data.nodeId)
-              .val(data.values);
-            //.then(() => {
-            //  ...
-            //});
+          case 'g/node/save': 
+            let node = cope.graph(data.graphId)
+                           .node(data.nodeId);
+
+            let newData = data.newData;
+
+            let fu = user.fetch(); // fetched user
+
+            if (!node.nodeId) {
+              node.create()
+                .then(() => {
+                  node.meta('nodeId', node.nodeId);
+                });
+            }
+
+            try {
+              if (fu.status.msg == 'USER_SIGNED_IN') {
+                node.meta('createdBy', fu.data);
+              }
+            } catch (err) {
+              debug(err);
+            }
+
+            node.save(data.newData)
+              .then(() => {
+                let nodeSnap = node.snap();
+                sendObj('saved', nodeSnap, reqId);
+              });
             break;
         } // end of switch
       } catch (err) {
