@@ -470,6 +470,33 @@ module.exports = function() {
       return nodeAPI;
     }; // end of graphAPI.node
 
+    graphAPI.findNodes = function(q) {
+      let query = {}; //TBD: validated q
+      return new Promise((resolve, reject) => {
+        db({ dbname: graphId }).then(db => {
+          db.collection('nodes').find(query, { 
+            nodeId: 1, 
+            nodeData: 1 
+          }).toArray((err, docs) => {
+            debug('-----> FIND <-----', docs);
+            if (err) { 
+              debug(err); reject(err); 
+            } else {
+
+              // TBD: filter
+
+              resolve(docs.map(doc => {
+                let pair = {};
+                pair.nodeId = doc.nodeId;
+                pair.nodeData = doc.nodeData;
+                return pair;
+              }));
+            }
+          }); // end of ...find
+        }); // end of db().then()
+      }); // end of Promise()
+    }; // end of graphAPI.findNodes
+
     return graphAPI;
   }; // end of cope.graph
 
@@ -625,6 +652,19 @@ module.exports = function() {
                 sendObj('saved', nodeSnap, reqId);
               });
             break;
+          case 'g/find':
+            cope.graph(data.graphId)
+              .findNodes(data.query).then(nodePairs => {
+                if (!Array.isArray(nodePairs)) { 
+                  debug('ERROR/g/find: nodePairs', nodePairs); 
+                  return;
+                }
+                sendObj('found', { nodePairs: nodePairs }, reqId);
+              }).catch(err => {
+                debug(err);
+              });
+            break;
+          default:
         } // end of switch
       } catch (err) {
         

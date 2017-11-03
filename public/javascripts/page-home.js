@@ -45,6 +45,7 @@ user.on('deleted', result => {
 
 function msg(text) {
   document.getElementById('msg').innerHTML = '<p>' + text + '</p>';
+  getPosts();
 };
 
 function signInWrongly() {
@@ -102,14 +103,16 @@ function post() {
 };
 
 function getPosts() {
-  /*
-  graph.findNodes({
-    // post && travel && (tainan || taipei)
-    tags: ['post', 'travel', 'tainan + taipei'],
-    populated: true
-  }).then(nodes => {
+  console.log('getPosts~~~~');
+  let query = {};
+  query.types = ['post', 'item']; // post || item
+  query.tags = ['#a#b', '#post', '#men']; // (a && b) || post || men
+  graph.findNodes(query).then(nodes => {
+    console.log(nodes);
     nodes.map(node => {
-      console.log(node.snap());
+      console.log(node.id(), node.snap());
     });
-  });*/
+  }).catch(err => {
+    console.error(err);
+  });
 };

@@ -138,8 +138,8 @@
   }; // end of user for cope.user
 
   // cope.graph()
-  // - id: <str>graphId
   // - node: (? <str>nodeId) => nodeAPI
+  // - findNodes: (<obj>query) => <Promise>
   cope.graph = function(graphId) {
     let graph = {};
 
@@ -156,7 +156,7 @@
     //   || (<str>key, <mixed>value) 
     //   => <obj>nodeAPI, update the original node
     // - then: (<func>callback) => <obj>nodeAPI
-    // - snap: () => <obj>currentNodeData
+    // - snap: (? <obj>snapData) => <obj>currentNodeData
     // - tag: (<str>tagname) => <obj>nodeAPI
     // - removeTag: (<str>tagname) => <obj>nodeAPI
     // - alias: (<str>alias) => <obj>nodeAPI
@@ -253,7 +253,10 @@
         return nodeAPI;
       }; // end of nodeAPI.then
 
-      nodeAPI.snap = function() {
+      nodeAPI.snap = function(snapData) {
+        if (arguments.length === 1) {
+          nodeData = snapData
+        }
         return nodeData; 
       }; // end of nodeAPI.snap
 
@@ -278,6 +281,28 @@
 
       return nodeAPI;
     }; // end of graph.node
+
+    graph.findNodes = function(q) {
+      let query = q;
+      return new Promise((resolve, reject) => {
+        conn.req('g/find').on('found', res => {
+          let nodes = [];
+          console.log(res);
+          
+          // TBD: Populate these `nodes`
+
+          nodes = res.nodePairs.map(nodePair => {
+            let node = graph.node(nodePair.nodeId);
+            node.snap(nodePair.nodeData);
+            return node;
+          });
+          resolve(nodes);
+        }).send({
+          graphId: graphId,
+          query: query
+        }); // end of conn.req('g/find')
+      }); // end of new Promise()
+    }; // end of graph.findNodes
 
     return graph;
   }; // end of cope.graph 
