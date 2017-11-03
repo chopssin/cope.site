@@ -148,6 +148,9 @@
 
     // graph.node(? <str>nodeId)
     // - id: () => <str>nodeId || <null>
+    // - meta: () => <obj>snapNodeMeta
+    // - data: () => <obj>snapNodeData
+    // - snap: (? <obj>snapValue) => <obj>currentNodeValue
     // - fetch: () => <obj>nodeAPI
     // - save: (<obj>updates)  
     //   || (<str>key, <mixed>value) 
@@ -156,7 +159,6 @@
     //   || (<str>key, <mixed>value) 
     //   => <obj>nodeAPI, update the original node
     // - then: (<func>callback) => <obj>nodeAPI
-    // - snap: (? <obj>snapData) => <obj>currentNodeData
     // - tag: (<str>tagname) => <obj>nodeAPI
     // - removeTag: (<str>tagname) => <obj>nodeAPI
     // - alias: (<str>alias) => <obj>nodeAPI
@@ -169,23 +171,47 @@
 
       // Private variables
       let nodeData = null,
-          nodeAlias = util.makeIdWithTime(16), // default alias
+          nodeMeta = null,
           queue = util.makeQueue();
 
-      let updateNodeData = function(res) {
-        nodeData = res.data;
-        nodeId = res.id;
-      }; // end of updateNodeData
+      //let updateNodeData = function(res) {
+      //  nodeData = res.nodeData;
+      //  nodeId = res.nodeId;
+      //  nodeMeta = res.meta;
+      //}; // end of updateNodeData
 
       nodeAPI.id = function() {
         return nodeId;
       }; // end of nodeAPI.id
 
+      nodeAPI.meta = function() {
+        return nodeMeta;
+      }; // end of nodeAPI.meta
+
+      nodeAPI.data = function() {
+        return nodeData;
+      }; // end of nodeAPI.data
+
+
+      nodeAPI.snap = function(snapData) {
+        if (arguments.length === 1) {
+          nodeData = snapData.nodeData;
+          nodeMeta = snapData.nodeMeta;
+          nodeId = snapData.nodeId;
+        }
+        return {
+          data: nodeData,
+          meta: nodeMeta,
+          id: nodeId
+        };
+      }; // end of nodeAPI.snap
+
       nodeAPI.fetch = function() { // get all data
         queue.add(() => {
           conn.req('g/node/fetch').once('ok', res => {
             console.log('g/node/fetch', res);
-            updateNodeData(res);
+            //updateNodeData(res);
+            nodeAPI.snap(res);
             queue.next();
           }).send({
             graphId: graphId,
@@ -208,7 +234,8 @@
         queue.add(() => {
           conn.req('g/node/save').on('saved', res => {
             console.log('g/node/save', res);
-            updateNodeData(res);
+            //updateNodeData(res);
+            nodeAPI.snap(res);
             queue.next();
           }).send({
             graphId: graphId,
@@ -232,7 +259,8 @@
         queue.add(() => {
           conn.req('g/node/update').on('updated', res => {
             console.log('g/node/update', res);
-            updateNodeData(res);
+            //updateNodeData(res);
+            nodeAPI.snap(res);
             queue.next();
           }).send({
             graphId: graphId,
@@ -252,13 +280,6 @@
         }
         return nodeAPI;
       }; // end of nodeAPI.then
-
-      nodeAPI.snap = function(snapData) {
-        if (arguments.length === 1) {
-          nodeData = snapData
-        }
-        return nodeData; 
-      }; // end of nodeAPI.snap
 
       nodeAPI.alias = function(name) {
         // TBD: ...
@@ -293,7 +314,7 @@
 
           nodes = res.nodePairs.map(nodePair => {
             let node = graph.node(nodePair.nodeId);
-            node.snap(nodePair.nodeData);
+            node.snap(nodePair);
             return node;
           });
           resolve(nodes);

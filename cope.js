@@ -328,6 +328,7 @@ module.exports = function() {
         nodeAPI.nodeData = Object.assign({}, value && value.nodeData);
         delete value.nodeId;
         delete value.nodeData;
+        delete value._id;
         nodeAPI.nodeMeta = value;
       }; // end of updateNodeValue
 
@@ -379,7 +380,10 @@ module.exports = function() {
               let query = {};
               query._id = ObjectId(nodeAPI.nodeId);
               db.collection('nodes').findOneAndUpdate(query
-                , { $set: { 'nodeData': newData } }
+                , { $set: { 
+                  'nodeData': newData,
+                  'updatedAt': new Date().getTime()
+                } }
                 , { returnNewDocument: true }
                 , (err, res) => {
                 if (err) { 
@@ -462,8 +466,9 @@ module.exports = function() {
 
       nodeAPI.snap = function() {
         return {
-          id: nodeAPI.nodeId,
-          data: nodeAPI.nodeData
+          nodeId: nodeAPI.nodeId,
+          nodeMeta: nodeAPI.nodeMeta,
+          nodeData: nodeAPI.nodeData
         };
       }; // end of nodeAPI.snap
 
@@ -476,7 +481,11 @@ module.exports = function() {
         db({ dbname: graphId }).then(db => {
           db.collection('nodes').find(query, { 
             nodeId: 1, 
-            nodeData: 1 
+            nodeData: 1, 
+            createdBy: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            scope: 1
           }).toArray((err, docs) => {
             debug('-----> FIND <-----', docs);
             if (err) { 
@@ -489,6 +498,10 @@ module.exports = function() {
                 let pair = {};
                 pair.nodeId = doc.nodeId;
                 pair.nodeData = doc.nodeData;
+                pair.nodeMeta = Object.assign({}, doc);
+                delete pair.nodeMeta._id;
+                delete pair.nodeMeta.nodeData;
+                delete pair.nodeMeta.nodeId;
                 return pair;
               }));
             }
@@ -640,7 +653,7 @@ module.exports = function() {
 
             try {
               if (fu.status.msg == 'USER_SIGNED_IN') {
-                node.meta('createdBy', fu.data);
+                node.meta('createdBy', fu.data.id);
               }
             } catch (err) {
               debug(err);

@@ -103,14 +103,28 @@ function post() {
 };
 
 function getPosts() {
-  console.log('getPosts~~~~');
+  let postsNode = document.getElementById('posts');
+  while(postsNode.hasChildNodes()) {
+    postsNode.removeChild(postsNode.lastChild);
+  }
+  
   let query = {};
-  query.types = ['post', 'item']; // post || item
-  query.tags = ['#a#b', '#post', '#men']; // (a && b) || post || men
+  query.tags = ['#a#b', '#post', '#item']; // (a && b) || post || item
   graph.findNodes(query).then(nodes => {
     console.log(nodes);
     nodes.map(node => {
-      console.log(node.id(), node.snap());
+      let nodeSnap = node.snap();
+      console.log(node.id(), nodeSnap);
+      let divNode = document.createElement('DIV');
+      let headerNode = document.createElement('DIV');
+      headerNode.innerHTML = nodeSnap.meta.createdBy || 'Guest';
+      headerNode.style.fontSize = '14px';
+      headerNode.style.fontWeight = '800';
+      headerNode.style.marginBottom = '8px';
+      divNode.setAttribute('style', 'padding:16px; font-size:20px; color:#333; width:400px; background:#aca; margin:16px 0');
+      divNode.appendChild(headerNode);
+      divNode.appendChild(document.createTextNode(node.data().title));
+      postsNode.appendChild(divNode);
     });
   }).catch(err => {
     console.error(err);
