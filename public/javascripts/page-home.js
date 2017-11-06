@@ -117,13 +117,32 @@ function getPosts() {
       console.log(node.id(), nodeSnap);
       let divNode = document.createElement('DIV');
       let headerNode = document.createElement('DIV');
+      let modifyBtnNode = document.createElement('BUTTON');
+      let deleteBtnNode = document.createElement('BUTTON');
       headerNode.innerHTML = nodeSnap.meta.createdBy || 'Guest';
       headerNode.style.fontSize = '14px';
       headerNode.style.fontWeight = '800';
       headerNode.style.marginBottom = '8px';
+
+      modifyBtnNode.innerHTML = 'Modify';
+      modifyBtnNode.onclick = function() {
+        console.log('modify ' + node.id());
+        node.save({
+          title: 'Updated title at ' + new Date(),
+          content: 'Hello, the secret of the universe is ' + cope.util.makeId(6)
+        }); 
+      };
+
+      deleteBtnNode.innerHTML = 'Delete';
+      deleteBtnNode.onclick = function() {
+        node.del(true);
+      };
+
       divNode.setAttribute('style', 'padding:16px; font-size:20px; color:#333; width:400px; background:#aca; margin:16px 0');
       divNode.appendChild(headerNode);
       divNode.appendChild(document.createTextNode(node.data().title));
+      divNode.appendChild(modifyBtnNode);
+      divNode.appendChild(deleteBtnNode);
       postsNode.appendChild(divNode);
     });
   }).catch(err => {

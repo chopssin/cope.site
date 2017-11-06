@@ -5,6 +5,7 @@
   // - graph: (<str>graphId) => <obj>graphAPI
   let cope = {};
   cope.ui = ui; // TBD: export ui
+  cope.util = util; // export util
 
   let conn = util.conn; // used by #user, #graph
 
@@ -154,10 +155,11 @@
     // - fetch: () => <obj>nodeAPI
     // - save: (<obj>updates)  
     //   || (<str>key, <mixed>value) 
-    //   => <obj>nodeAPI, overwrite the original node
+    //   => <obj>nodeAPI, OVERWRITE the whole data of the node
     // - update: (<obj>updates)  
     //   || (<str>key, <mixed>value) 
-    //   => <obj>nodeAPI, update the original node
+    //   => <obj>nodeAPI, UPSERT the node
+    // - del: (true) => <obj>nodeAPI
     // - then: (<func>callback) => <obj>nodeAPI
     // - tag: (<str>tagname) => <obj>nodeAPI
     // - removeTag: (<str>tagname) => <obj>nodeAPI
@@ -270,6 +272,20 @@
         });
         return nodeAPI;
       }; // end of nodeAPI.update
+
+      nodeAPI.del = function(check) {
+        if (typeof check === true) {
+          conn.req('g/node/del').on('deleted', res => {
+            console.log('g/node/del', res);
+            nodeData = null;
+            nodeMeta = null;
+          }).send({
+            graphId: graphId,
+            nodeId: nodeId
+          });
+        }
+        return nodeAPI; 
+      }; // end of nodeAPI.del
 
       nodeAPI.then = function(callback) {
         if (typeof callback == 'function') {

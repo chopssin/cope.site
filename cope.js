@@ -271,7 +271,10 @@ module.exports = function() {
       updateSocketData = function(userData) {
         try {
           debug('updateSocketData', userData);
-          socket.handshake.session.userData = userData; // TBD: Not working???
+          if (userData && userData.id) {
+            userStatus('USER_SIGNED_IN');
+          }
+          socket.handshake.session.userData = userData; 
           socket.handshake.session.save();
         } catch (err) {
           debug(err);
@@ -309,6 +312,7 @@ module.exports = function() {
     // - create: () => <obj>nodeAPI,
     // - save: (<obj>) || (<str>, <mixed>) => <obj>nodeAPI
     // - update: (<obj>) || (<str>, <mixed>) => <obj>nodeAPI
+    // - del: () => <obj>nodeAPI
     // - meta: (<obj>ops || (<str>, <mixed>)) =>  <obj>nodeAPI
     // - then: () => <obj>nodeAPI
     // - snap: () => <obj>nodeValue, {
@@ -405,6 +409,38 @@ module.exports = function() {
         }
         return nodeAPI;
       }; // end of nodeAPI.save
+
+      nodeAPI.update = function(a, b) {
+        return nodeAPI;
+      }; // end of nodeAPI.update
+
+      nodeAPI.del = function() {
+        try {
+          queue.add(() => {
+            debug('nodeAPI.del', nodeAPI.nodeId);
+            
+            if (!nodeAPI.nodeId) {
+              debug('ERROR/nodeAPI.del: nodeId not found');
+              queue.next();
+              return;
+            }
+            let query = {};
+            query._id = ObjectId(nodeAPI.nodeId);
+
+            db({ dbname: graphId }).then(db => {
+              db.collection('nodes').deleteOne(query, (err, res) => {
+                if (err) {
+                  debug(err);
+                }
+                queue.next();
+              });
+            });
+          });
+        } catch (err) {
+          debug(err);
+        }
+        return nodeAPI;
+      }; // end of nodeAPI.del
 
       nodeAPI.meta = function(a, b) {
         try {
@@ -585,97 +621,117 @@ module.exports = function() {
         obj = readReq(obj);
         if (!obj) { return; }
 
-        var api = obj.api,
+        let api = obj.api,
             data = obj.data,
             reqId = obj.reqId;
 
         debug('socket:toServer', obj);
 
         // translate restful api by using cope.user
+
+
+        // TBD: Wrap the following in funcionts!!!!!
+
+
         switch (api) {
           case 'u/fetch': 
-            let userData = user.fetch().data,
-                userStatus = user.fetch().status;
-            sendObj(userData ? 'signedIn' : 'signedOut', 
-                    userData ? userData : userStatus,
-                    reqId);
+            return function(fetched) {
+              let signal = 'signedOut',
+                  sentObj = fetched.status;
+              if (fetched.status.msg == 'USER_SIGNED_IN') {
+                signal = 'signedIn';
+                sentObj = fetched.data;
+              }
+              debug('u/fetch ===> ', fetched);
+              sendObj(signal, sentObj, reqId);
+            }(user.fetch());
             break;
           case 'u/signup':
-            user.signUp(data).then(userStatus => {
-              debug('u/signup', userStatus);
-              sendObj('signedUp', userStatus, reqId);
-            }).catch(function(err) {
-              sendObj('signedUp/error', err, reqId);
-            });
+            return function() {
+              user.signUp(data).then(userStatus => {
+                debug('u/signup', userStatus);
+                sendObj('signedUp', userStatus, reqId);
+              }).catch(function(err) {
+                sendObj('signedUp/error', err, reqId);
+              });
+            }();
             break;
           case 'u/signin':
-            user.signIn(data).then(function(userStatus) {
-
-              // Share user data with express `req.session`
-              // socket.handshake.session.userData = userData;
-              // socket.handshake.session.save();
-              let userData = user.fetch().data;
-              debug('u/signin', userData);
-              sendObj('signedIn', userData, reqId);
-            }).catch(function(err) {
-              sendObj('signedIn/error', err, reqId); 
-            });
+            return function() {
+              user.signIn(data).then(function(userStatus) {
+                let userData = user.fetch().data;
+                debug('u/signin', userData);
+                sendObj('signedIn', userData, reqId);
+              }).catch(function(err) {
+                sendObj('signedIn/error', err, reqId); 
+              });
+            }();
             break;
           case 'u/signout': 
-            user.signOut().then(userStatus => {
-
-              // Clear user data in express `req.session`
-              // socket.handshake.session.userData = null;
-              // socket.handshake.session.save();
-
-              sendObj('signedOut', userStatus, reqId);
-            });
+            return function() {
+              user.signOut().then(userStatus => {
+                sendObj('signedOut', userStatus, reqId);
+              });
+            }();
             break;
           case 'u/delete':
-            user.deleteAccount().then(userStatus => {
-              sendObj('deleted', userStatus, reqId);
-            });
+            return function() {
+              user.deleteAccount().then(userStatus => {
+                sendObj('deleted', userStatus, reqId);
+              });
+            }();
             break;
           case 'g/node/save': 
-            let node = cope.graph(data.graphId)
-                           .node(data.nodeId);
+            return function(node) {
+              let newData = data.newData;
+              let fu = user.fetch(); // fetched user
 
-            let newData = data.newData;
-
-            let fu = user.fetch(); // fetched user
-
-            if (!node.nodeId) {
-              node.create()
-                .then(() => {
-                  node.meta('nodeId', node.nodeId);
-                });
-            }
-
-            try {
-              if (fu.status.msg == 'USER_SIGNED_IN') {
-                node.meta('createdBy', fu.data.id);
+              if (!node.nodeId) {
+                node.create()
+                  .then(() => {
+                    node.meta('nodeId', node.nodeId);
+                  });
               }
-            } catch (err) {
-              debug(err);
-            }
 
-            node.save(data.newData)
-              .then(() => {
-                let nodeSnap = node.snap();
-                sendObj('saved', nodeSnap, reqId);
+              try {
+                if (fu.status.msg == 'USER_SIGNED_IN') {
+                  node.meta('createdBy', fu.data.id);
+                }
+              } catch (err) {
+                debug(err);
+              }
+
+              node.save(data.newData)
+                .then(() => {
+                  let nodeSnap = node.snap();
+                  sendObj('saved', nodeSnap, reqId);
+                });
+            }(cope.graph(data.graphId).node(data.nodeId));
+            break;
+          case 'g/node/update':
+            // TBD --> 'updated'
+            break;
+          case 'g/node/del':
+            return function(node) {
+              debug('===== DELETE NODE =====');
+              node.del().then(() => {
+                sendObj('deleted', null, reqId);
               });
+            }(cope.graph(data.graphId).node(data.nodeId));
             break;
           case 'g/find':
-            cope.graph(data.graphId)
-              .findNodes(data.query).then(nodePairs => {
-                if (!Array.isArray(nodePairs)) { 
-                  debug('ERROR/g/find: nodePairs', nodePairs); 
-                  return;
-                }
-                sendObj('found', { nodePairs: nodePairs }, reqId);
-              }).catch(err => {
-                debug(err);
-              });
+            return function() {
+              cope.graph(data.graphId)
+                .findNodes(data.query).then(nodePairs => {
+                  if (!Array.isArray(nodePairs)) { 
+                    debug('ERROR/g/find: nodePairs', nodePairs); 
+                    return;
+                  }
+                  sendObj('found', { nodePairs: nodePairs }, reqId);
+                }).catch(err => {
+                  debug(err);
+                });
+            }();
             break;
           default:
         } // end of switch
