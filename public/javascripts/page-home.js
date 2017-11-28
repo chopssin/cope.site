@@ -24,7 +24,6 @@ user.on('signedUp/error', result => {
 });
 
 user.on('signedIn', result => {
-  console.log(result);
   msg('Welcome, ' + user.email);
 });
 
@@ -34,12 +33,10 @@ user.on('signedIn/error', result => {
 });
 
 user.on('signedOut', result => {
-  console.log(result);
   msg('Welcome, guest');
 });
 
 user.on('deleted', result => {
-  console.log(result);
   msg('Deleted.');
 });
 
@@ -111,10 +108,8 @@ function getPosts() {
   let query = {};
   query.tags = ['#a#b', '#post', '#item']; // (a && b) || post || item
   graph.findNodes(query).then(nodes => {
-    console.log(nodes);
     nodes.map(node => {
       let nodeSnap = node.snap();
-      console.log(node.id(), nodeSnap);
       let divNode = document.createElement('DIV');
       let headerNode = document.createElement('DIV');
       let modifyBtnNode = document.createElement('BUTTON');

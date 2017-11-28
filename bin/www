@@ -35,9 +35,9 @@ var io = require('socket.io')(server);
  * So we can access req.session via socket.handshake.session
  */
 
-io.use(sharedsession(sess, {
-  autoSave: true
-}));
+//io.use(sharedsession(sess, {
+//  autoSave: true
+//}));
 
 /**
  * cope config with the socket on io's connection
@@ -55,7 +55,9 @@ io.on('connection', function(socket) {
 /**
  * Integrate MongoDB
  */
-cope.useMongoDb();
+cope.useMongoDb({
+  url: 'mongodb://localhost:27017/testDB'
+});
 
 
 /**

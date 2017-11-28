@@ -5,8 +5,9 @@
   "scripts": {
     "lessc": "lessc ./less/main.less ./public/stylesheets/style.css",
     "www": "node ./bin/www",
-    "start": "npm run lessc && npm run www",
-    "test": "DEBUG=cope.site:* npm start"
+    "all": "npm run lessc && npm run www",
+    "start": "NODE_ENV=production npm run all",
+    "test": "DEBUG=cope.site:* NODE_ENV=dev npm run all"
   },
   "dependencies": {
     "body-parser": "~1.12.0",
