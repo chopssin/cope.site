@@ -4,12 +4,13 @@
  * Module dependencies.
  */
 
-var app = require('../app');
-var debug = require('debug')('cope.site:server');
-var http = require('http');
-var sess = app.get('sess');
-var sharedsession = require('express-socket.io-session');
-var cope = require('../cope'); 
+let app = require('../app');
+let debug = require('debug')('cope.site:server');
+let http = require('http');
+let sess = app.get('sess');
+let sharedsession = require('express-socket.io-session');
+let cope = require('../cope'); 
+let copeModels = require('../cope-models');
 
 /**
  * Get port from environment and store in Express.
@@ -35,9 +36,9 @@ var io = require('socket.io')(server);
  * So we can access req.session via socket.handshake.session
  */
 
-//io.use(sharedsession(sess, {
-//  autoSave: true
-//}));
+io.use(sharedsession(sess, {
+  autoSave: true
+}));
 
 /**
  * cope config with the socket on io's connection
