@@ -13,17 +13,27 @@ module.exports = function() {
   });
 
   M.createModel('users', model => {
-    model.method('getUserData', obj => {
+
+    // TBD: What about a model without any custom method???
+    model.method('addUser', obj => {
       return new Promise((resolve, reject) => {
         let email = obj.email;
         let password = obj.pwd;
-        let userNode = G.node({ email: email })
-          .fetch().then(() => {
-            resolve(userNode.snap());
+        //G.createNode().then(nodeId => {
+        //  let userNode = G.node(nodeId).val(obj).next(() => {
+        //    resolve(userNode.snap());
+        //  });
+        //});
+        model.createNode().then(nodeId => {
+          let m = model.node(nodeId);
+          m.val(obj).fetch().next(() => {
+            resolve(m.snap());
           });
+        });
       });
-    });
-  });
+    }); // end of users.addUser
+
+  }); // end of model "users"
 
   return false;
 }();

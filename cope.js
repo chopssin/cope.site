@@ -43,20 +43,26 @@ module.exports = function() {
   //     }
   //     - node = (<str>nodeId || <obj>query) => <obj>nodeAPI: {
   //       - nodeId = () => <str>nodeId
-  //       - snap = () => <obj>nodeData
+  //       - snap = () => <obj>nodeData.value
+  //       - snapData = () => <obj>nodeData
   //       - fetch = () => nodeAPI // to fetch "value"
   //       - val = (<obj>newValue) || (<str>, <mixed>) => nodeAPI // to update "value"
   //       - newVal = (<obj>newValue) => nodeAPI // to rewrite "value"
-  //       - then = () => nodeAPI
+  //       - next = () => nodeAPI
   //       - del = () => <Promise>
   //       - link = (<str>name, <str>anotherNodeId) => nodeAPI
+  //       - setModel = (<str>modelName) => nodeAPI
   //       - method = (<str>methodName, <func>method) => nodeAPI
   //     } EOF nodeAPI
   //     - findNodes = (<obj>query) => <Promise>
   //   } EOF graphAPI
-  //   - M = <obj>modelAPI: {
+  //   - M = <obj>modelManagerAPI: {
   //     - createModel = (<str>modelName, <func>(<= <obj>model)) => false
-  //     - model = (<str>modelName) => <obj>modelAPI || null
+  //     - model = (<str>modelName) => null || <obj>modelAPI: {
+  //       - createNode
+  //       - node
+  //       - method
+  //     } EOF modelAPI
   //   } EOF modelAPI
   //   - useMongoDb = (<obj>params) => false
   //   - useSocketIO = (<obj>socket) => false
@@ -142,8 +148,21 @@ module.exports = function() {
       let query = null;
       if (typeof a == 'string') {
         nodeData.nodeId = a;
+        query = {};
+        query.nodeId = a;
       } else if (typeof a == 'object') {
-        query = a;
+        query = {};
+        for (let key in a) {
+          // TBD: validate key here
+          // key = validateKey(key);
+          let trueKey = 'value.' + key;
+          ['nodeId', 'model'].map(k => {
+            if (k == key) {
+              trueKey = key;
+            }
+          });
+          query[trueKey] = a[key];
+        }
       } else {
         return null;
       }
@@ -168,7 +187,8 @@ module.exports = function() {
                 id = nodeData.nodeId;
               } else {
                 // TBD: How to callback with this ERROR???
-                errObj = debug('graphAPI.node(a): failed to find the exact node', err, arr);
+                errObj = debug('graphAPI.node(a): failed to find the exact node', 
+                  query, err, '| # nodes = ' + (arr && arr.length));
               }
               callback(errObj, id);
               mg.close();
@@ -209,8 +229,12 @@ module.exports = function() {
         return nodeData && nodeData.nodeId;
       }; // end of nodeAPI.nodeId
 
-      nodeAPI.snap = function() {
+      nodeAPI.snapData = function() {
         return nodeData;
+      }; // end of nodeAPI.snapData
+
+      nodeAPI.snap = function() {
+        return nodeData && nodeData.value || {};
       }; // end of nodeAPI.snap
 
       nodeAPI.fetch = function() {
@@ -271,14 +295,15 @@ module.exports = function() {
         return nodeAPI;
       }; // end of nodeAPI.val
 
-      nodeAPI.then = function(callback) {
+      nodeAPI.next = function(callback) {
         queue.add(() => {
           if (typeof callback == 'function') {
             callback();
           }
+          queue.next();
         });
         return nodeAPI;
-      }; // end of nodeAPI.then
+      }; // end of nodeAPI.next
 
       nodeAPI.del = function() {
         return new Promise((resolve, reject) => {
@@ -299,9 +324,22 @@ module.exports = function() {
         // TBD 
       }; // end of nodeAPI.link
 
+      nodeAPI.setModel = function(modelName) {
+        if (typeof modelName == 'string') {
+          queue.add(() => {
+            let updates = {};
+            updates.model = modelName
+            setData(updates, () => {
+              queue.next();
+            });
+          });
+        }
+        return nodeAPI;
+      }; // end of nodeAPI.setModel
+
       nodeAPI.method = function(methodName, func) {
         if (!nodeAPI[methodName] && (typeof func == 'function')) {
-          nodeAPI[method] = func;
+          nodeAPI[methodName] = func;
         }
         return nodeAPI;
       }; // end of nodeAPI.method
@@ -314,37 +352,64 @@ module.exports = function() {
 
   cope.M = function() {
     let models = {};
-    let modelAPI = {};
+    let modelManagerAPI = {};
 
-    modelAPI.createModel = function(modelName, modelFunc) {
-      let model = {};
- 
-      model.method = function(name, fn) {
-        if (!model[name] && (typeof fn == 'function')) {
-          model[name] = fn;
+    modelManagerAPI.createModel = function(modelName, modelFunc) {
+      let modelAPI = {};
+
+      // TBD: 
+      modelAPI.createNode = function() {
+        return new Promise((resolve, reject) => {
+          cope.G.createNode().then(nodeId => {
+            cope.G.node(nodeId)
+              .setModel(modelName)
+              .next(() => {
+                resolve(nodeId);
+              });
+          });
+        });
+      }; // end of modelAPI.createNode
+
+      modelAPI.node = function(a) {
+        let query = null;
+        if (typeof a == 'string') {
+          query = {};
+          query.nodeId = a;
+          query.model = modelName;
+        } else if (typeof a == 'object') {
+          query = Object.assign({}, query, { model: modelName }); 
         }
-      }; // end of model.method
+        return cope.G.node(query);
+      }; // end of modelAPI.node
+ 
+      modelAPI.method = function(name, fn) {
+        if (!modelAPI[name] && (typeof fn == 'function')) {
+          modelAPI[name] = fn;
+        }
+      }; // end of modelAPI.method
 
       if (!models[modelName]) {
         try {
-          modelFunc(model); // add methods
-          models[modelName] = model; // save at store `models`
+          if (typeof modelFunc == 'function') {
+            modelFunc(modelAPI); // add methods
+          }
+          models[modelName] = modelAPI; // save at store `models`
         } catch (err) {
-          debug('[ERR] modelAPI.createModel(modelName, func):', err);
+          debug('[ERR] modelManagerAPI.createModel(modelName, func):', err);
         }
       }
       return false;
-    }; // end of modelAPI.createModel
+    }; // end of modelManagerAPI.createModel
 
-    modelAPI.model = function(modelName) {
+    modelManagerAPI.model = function(modelName) {
       try {
         return models[modelName] || null;
       } catch (err) {
         return null;
       }
-    }; // end of modelAPI.model
+    }; // end of modelManagerAPI.model
 
-    return modelAPI;
+    return modelManagerAPI;
   }(); // end of cope.M
 
   cope.useMongoDb = function(params) {
