@@ -8,9 +8,11 @@ var sess = require('express-session')({
   secret: 'sdfsjhkkef',
   resave: false,
   saveUninitialized: true
+  // TBD: store: third-party store such as "connect-mongodb-session"
 });
 
 var routes = require('./routes/index');
+var apiRoutes = require('./routes/api');
 var users = require('./routes/users');
 var devRoutes = require('./routes/dev');
 
@@ -34,6 +36,7 @@ app.set('sess', sess);
 app.use(sess);
 
 app.use('/', routes);
+app.use('/api', apiRoutes);
 app.use('/users', users);
 if (app.get('env') === 'dev') {
   app.use('/dev', devRoutes);
