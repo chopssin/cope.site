@@ -45,35 +45,6 @@ module.exports = function() {
     next();
   });
 
-  test('users.getUser', next => {
-
-    return next();
-
-    let users = M.model('users');
-    users
-      .getUser({ email: 'aaa', pwd: 'ppp' })
-      .then(userData => {
-        debug('userData', userData);
-        next();
-      });
-  });
-
-  test('users.delUser', next => {
-
-    return next();
-
-    let users = M.model('users');
-    users
-      .delUser({ email: 'taster@xmail.com', pwd: 'taste!' })
-      .then(() => {
-        next();
-      })
-      .catch(err => {
-        debug(err);
-        next();
-      });
-  });
-
   test('users.addUser', next => {
     let users = M.model('users');
 
@@ -85,9 +56,7 @@ module.exports = function() {
       });
   });
 
-  test('users.getUser with wrong password', next => {
-
-    return next();
+  test('Sign in with wrong password', next => {
 
     let userNode = M.model('users').node({ 
       email: 'taster@xmail.com', 
@@ -95,25 +64,25 @@ module.exports = function() {
     });
 
     userNode.fetch().next(() => {
-      let userData = userNode.snap(); 
-      if (!userData) {
+      if (!userNode.nodeId()) {
         next();
       } else {
-        debug('[ERR] userData', userData);
+        debug('[ERR] userNode.nodeId()', userNode.nodeId());
       }
     });
   });
 
-  test('users.getUser', next => {
+  test('Sign in', next => {
     let userNode = M.model('users').node({ 
       email: 'taster@xmail.com', 
       pwd: 'taste!' 
     });
 
     userNode.fetch().next(() => {
+      let userNodeId = userNode.nodeId();
       let userData = userNode.snapData();
-      debug('userData', userData);
-      if (userData) {
+      if (userNodeId) {
+        debug('userData', userData);
         next();
       } else {
         debug('[ERR] userData', userData);
@@ -121,20 +90,22 @@ module.exports = function() {
     });
   });
 
-  test('users.delUser', next => {
+  test('Delete the user', next => {
+    M.model('users').node({
+      email: 'taster@xmail.com', 
+      pwd: 'taste!' 
+    }).del().then(() => {
+      next();
+    });
+  });
 
-    return next();
-
-    let users = M.model('users');
-    users
-      .delUser({ email: 'taster@xmail.com', pwd: 'taste!' })
-      .then(() => {
-        next();
-      })
-      .catch(err => {
-        debug(err);
-        next();
-      });
+  test('Delete a non-exsiting user', next => {
+    M.model('users').node({
+      email: 'testXXX@xmail.com' 
+    }).del().catch(err => {
+      debug(err);
+      next();
+    });
   });
 
   test('All tests executed.', next => {

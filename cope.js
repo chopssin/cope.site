@@ -167,6 +167,19 @@ module.exports = function() {
         return null;
       }
 
+      // Use $and in query
+      if (query) {
+        let qs = [];
+        for (let key in query) {
+          let tmp = {};
+          tmp[key] = query[key];
+          qs = qs.concat(tmp);
+        }
+        query = {
+          $and: qs
+        };
+      }
+
       let nodeId = function(callback) {
         if (typeof callback != 'function') {
           return;
@@ -309,11 +322,13 @@ module.exports = function() {
         return new Promise((resolve, reject) => {
           db.useMongo(mg => {
             mg.collection('nodes').findOneAndDelete(query, (err, result) => {
-              if (!err) {
+              debug(result);
+              if (!err && result && result.value) {
                 nodeData = {};
                 resolve();
               } else {
-                reject(debug('[ERR] nodeAPI.del', err, result));
+                debug('[ERR] nodeAPI.del', err, result);
+                reject('Failed to delete non-existing node, or something just went wrong');
               }
             });
           });
@@ -377,7 +392,7 @@ module.exports = function() {
           query.nodeId = a;
           query.model = modelName;
         } else if (typeof a == 'object') {
-          query = Object.assign({}, query, { model: modelName }); 
+          query = Object.assign({}, a, { model: modelName }); 
         }
         return cope.G.node(query);
       }; // end of modelAPI.node
