@@ -76,20 +76,14 @@ module.exports = function() {
   });
 
   test('Sign in', next => {
-    let userNode = M.model('users').node({ 
+    M.model('users').getUser({
       email: 'taster@xmail.com', 
       pwd: 'taste!' 
-    });
-
-    userNode.fetch().next(() => {
-      let userNodeId = userNode.nodeId();
-      let userData = userNode.snapData();
-      if (userNodeId) {
-        debug('userData', userData);
-        next();
-      } else {
-        debug('[ERR] userData', userData);
-      } 
+    }).then(userData => {
+      debug('userData', userData);
+      next();
+    }).catch(err => {
+      debug('[ERR] userModel.getUser(obj): failed');
     });
   });
 
@@ -101,7 +95,6 @@ module.exports = function() {
       next();
     }).catch(err => {
       debug('[ERR] This should not happen!!!', err);
-      console.log('??????? sjdfksdfhskjfhskdjh');
     })
   });
 
@@ -118,16 +111,12 @@ module.exports = function() {
   });
 
   test('Fetch data from a non-existing user', next => {
-    let u = M.model('users').node({
+    M.model('users').getUser({
       email: 'root@funkuu.com'
-    });
-
-    u.fetch().next(() => {
-      if (u.nodeId()) {
-        debug('[ERR] u.nodeId()', u.nodeId());
-      } else {
-        next();
-      }
+    }).then(userData => {
+      debug('[ERR] This should not be called!');
+    }).catch(err => {
+      next();
     });
   });
 

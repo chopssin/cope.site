@@ -21,13 +21,33 @@ module.exports = function() {
         let email = obj.email;
         let password = obj.pwd;
         model.createNode().then(nodeId => {
-          let m = model.node(nodeId);
-          m.val(obj).fetch().next(() => {
-            resolve(m.snap());
+          let u = model.node(nodeId);
+          u.val(obj).fetch().next(() => {
+            resolve(u.snap());
           });
         });
       });
     }); // end of users.addUser
+
+    // users.getUser
+    model.method('getUser', obj => {
+      return new Promise((resolve, reject) => {
+        let email = obj.email;
+        let password = obj.pwd;
+        let u = model.node({ 
+          email: email, 
+          pwd: password
+        });
+
+        u.fetch().next(() => {
+          if (u.nodeId()) {
+            resolve(u.snapData());
+          } else {
+            reject('[ERR] failed to get user by', obj);
+          }
+        });
+      });
+    }); // end of users.getUser
 
   }); // end of model "users"
 
