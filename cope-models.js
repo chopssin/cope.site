@@ -6,24 +6,20 @@ module.exports = function() {
   debug('Set default Cope models');
   
   M.createModel('test', model => {
+    
+    // test.sayHi
     model.method('sayHi', () => {
-      debug('[model:test] Hi');
+      return '[model:test] Hi';
     });
-    return model;
   });
 
   M.createModel('users', model => {
 
-    // TBD: What about a model without any custom method???
+    // users.addUser
     model.method('addUser', obj => {
       return new Promise((resolve, reject) => {
         let email = obj.email;
         let password = obj.pwd;
-        //G.createNode().then(nodeId => {
-        //  let userNode = G.node(nodeId).val(obj).next(() => {
-        //    resolve(userNode.snap());
-        //  });
-        //});
         model.createNode().then(nodeId => {
           let m = model.node(nodeId);
           m.val(obj).fetch().next(() => {

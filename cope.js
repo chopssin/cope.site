@@ -323,7 +323,7 @@ module.exports = function() {
           db.useMongo(mg => {
             mg.collection('nodes').findOneAndDelete(query, (err, result) => {
               debug(result);
-              if (!err && result && result.value) {
+              if (result && result.value) {
                 nodeData = {};
                 resolve();
               } else {

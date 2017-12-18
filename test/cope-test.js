@@ -41,8 +41,11 @@ module.exports = function() {
 
   test('testModel.sayHi', next => {
     let testModel = M.model('test');
-    testModel.sayHi();
-    next();
+    if (typeof testModel.sayHi() == 'string') {
+      next();
+    } else {
+      debug('Model `test` went wrong');
+    }
   });
 
   test('users.addUser', next => {
@@ -96,15 +99,35 @@ module.exports = function() {
       pwd: 'taste!' 
     }).del().then(() => {
       next();
-    });
+    }).catch(err => {
+      debug('[ERR] This should not happen!!!', err);
+      console.log('??????? sjdfksdfhskjfhskdjh');
+    })
   });
 
   test('Delete a non-exsiting user', next => {
     M.model('users').node({
       email: 'testXXX@xmail.com' 
-    }).del().catch(err => {
-      debug(err);
+    }).del().then(() => {
+      debug('[ERR] This should not be called!');
+      console.log('------->>>>>> sjdkjsdlkfjdkslfjsdlk ');
+    }).catch(err => {
+      debug('This error should happen.', err);
       next();
+    });
+  });
+
+  test('Fetch data from a non-existing user', next => {
+    let u = M.model('users').node({
+      email: 'root@funkuu.com'
+    });
+
+    u.fetch().next(() => {
+      if (u.nodeId()) {
+        debug('[ERR] u.nodeId()', u.nodeId());
+      } else {
+        next();
+      }
     });
   });
 
