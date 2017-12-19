@@ -10,39 +10,47 @@ let M = cope.M;
 //   .then(result => { ... })
 //   .catch(err => { ... })
 
-router.get('/test', function(req, res, next) {
-  res.send({ ok: true });
-});
-
-router.post('/u/signup', function(req, res, next) {
-  M.model('users').addUser({ email: email, pwd: password })
-    .then(userData => {
-      res.send({ ok: true, data: userData }); 
-    });
-});
-
-router.post('/u/signin', function(req, res, next) {
-  // TBD: Clear user's client session
-  let u = M.model('users').node({ email: email, pwd: password });
-  u.fetch().next(() => {
-    if (u.nodeId()) {
-      // TBD: Save user's session
-      res.send({ ok: true, data: u.snapData() });
+// method, apiPath, modelName, modelMethod
+let apis = function() {
+  let apiStore = [];
+  return {
+    set: function(a, b, c, d) {
+      let obj = {};
+      obj.method = a;
+      obj.apiPath = b;
+      obj.modelName = c;
+      obj.modelMethod = d;
+      apiStore = apiStore.concat(obj);
+    },
+    get: function() {
+      return apiStore;
     }
-  });
-});
+  };
+}; // apis
 
-router.post('/u/signout', function(req, res, next) {
-  // TBD
-});
+apis.set('get', 'test', 'test', 'sayHi');
+apis.set('post', 'u/signup', 'users', 'addUser');
+apis.set('post', 'u/signin', 'users', 'getUser');
+apis.set('get', 'u/get/profile', 'users', 'getUserProfile');
 
-router.post('/u/profile/get', function(req, res, next) {
-  let u = M.model('users').node({ email: email, pwd: password });
+apis.get().map(a => {
+  try {
+    router[a.method](a.apiPath, function(req, res, next) {
+      let obj = req.body;
+      M.model(a.modelName)[a.modelMethod](obj).then(data => {
+        res.send({ ok: true, data: data });
+      }).catch(err => {
+        res.send({ ok: false, err: err });
+      });
+    }); // router[a.method]( ... )
+  } catch (err) {
+    debug(err);
+  }
+}); // end of apis.map
 
-  M.model('users').getUser({ email: email, pwd: password })
-    .then(profileData => {
-      res.send({ ok: true, data: profileData });
-    });
+// Define APIs which requires more flexible and custom design
+router.post('u/signout', function(req, res, next) {
+  // TBD: reset client session
 });
 
 module.exports = router;
