@@ -41,11 +41,11 @@ module.exports = function() {
 
   test('testModel.sayHi', next => {
     let testModel = M.model('test');
-    if (typeof testModel.sayHi() == 'string') {
+    testModel.sayHi().then(() => {
       next();
-    } else {
+    }).catch(err => {
       debug('Model `test` went wrong');
-    }
+    });
   });
 
   test('users.addUser', next => {

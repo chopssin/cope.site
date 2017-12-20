@@ -26,12 +26,12 @@ let apis = function() {
       return apiStore;
     }
   };
-}; // apis
+}(); // apis
 
-apis.set('get', 'test', 'test', 'sayHi');
-apis.set('post', 'u/signup', 'users', 'addUser');
-apis.set('post', 'u/signin', 'users', 'getUser');
-apis.set('get', 'u/get/profile', 'users', 'getUserProfile');
+apis.set('get', '/test', 'test', 'sayHi');
+apis.set('post', '/u/signup', 'users', 'addUser');
+apis.set('post', '/u/signin', 'users', 'getUser');
+apis.set('post', '/u/get/profile', 'users', 'getUserProfile');
 
 apis.get().map(a => {
   try {
@@ -45,6 +45,7 @@ apis.get().map(a => {
     }); // router[a.method]( ... )
   } catch (err) {
     debug(err);
+    res.send({ ok: false, err: err });
   }
 }); // end of apis.map
 

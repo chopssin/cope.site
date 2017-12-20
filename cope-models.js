@@ -9,7 +9,9 @@ module.exports = function() {
     
     // test.sayHi
     model.method('sayHi', () => {
-      return '[model:test] Hi';
+      return new Promise((resolve, reject) => {
+        resolve('[model:test] Hi');
+      });
     });
   });
 
@@ -48,6 +50,21 @@ module.exports = function() {
         });
       });
     }); // end of users.getUser
+
+    // users.getUserProfile
+    model.method('getUserProfile', obj => {
+      return new Promise((resolve, reject) => {
+        let email = obj.email;
+        let u = model.node({ email: email }); 
+        u.fetch().next(() => {
+          if (u.nodeId()) {
+            resolve(u.snap());
+          } else {
+            reject('[ERR] failed to get user by ' + JSON.stringify(obj));
+          }
+        });
+      });
+    }); // end of users.getUserProfile
 
   }); // end of model "users"
 
