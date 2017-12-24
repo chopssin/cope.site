@@ -30,14 +30,20 @@ let apis = function() {
 
 apis.set('get', '/test', 'test', 'sayHi');
 apis.set('post', '/u/signup', 'users', 'addUser');
-apis.set('post', '/u/signin', 'users', 'getUser');
 apis.set('post', '/u/get/profile', 'users', 'getUserProfile');
+apis.set('post', '/u/deluser', 'users', 'delUser');
+apis.set('post', '/create/post', 'posts', 'addPost');
 
 apis.get().map(a => {
   try {
     router[a.method](a.apiPath, function(req, res, next) {
       let obj = req.body;
-      M.model(a.modelName)[a.modelMethod](obj).then(data => {
+
+      // TBD: Use client-session to recognize user
+      let userData = req.session && req.session.userData;
+
+      M.model(a.modelName)[a.modelMethod](obj, userData)
+        .then(data => {
         res.send({ ok: true, data: data });
       }).catch(err => {
         res.send({ ok: false, err: err });
@@ -50,8 +56,35 @@ apis.get().map(a => {
 }); // end of apis.map
 
 // Define APIs which requires more flexible and custom design
-router.post('u/signout', function(req, res, next) {
+router.post('/u/signin', function(req, res, next) {
+  //apis.set('post', '/u/signin', 'users', 'signIn');
+  M.model('users').signIn(req.body).then(data => {
+    if (typeof req.session == 'object') {
+      req.session.userData = data;
+      res.send({ ok: true });
+    } else {
+      res.send({ ok: false });
+    }
+  });
+});
+
+router.get('/u/signout', function(req, res, next) {
   // TBD: reset client session
+  if (req.session && req.session.userData) {
+    req.session.userData = null;
+    res.send({ ok: true });
+  } else {
+    res.send({ ok: false });
+  }
+});
+
+router.get('/u/fetch', function(req, res, next) {
+  // TBD: reset client session
+  if (req.session && req.session.userData) {
+    res.send({ ok: true, data: req.session.userData });
+  } else {
+    res.send({ ok: false });
+  }
 });
 
 module.exports = router;

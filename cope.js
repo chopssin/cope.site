@@ -42,6 +42,7 @@ module.exports = function() {
   //       - catch <= <obj>error
   //     }
   //     - node = (<str>nodeId || <obj>query) => <obj>nodeAPI: {
+  //       - debug = (<bool>print) => <arr>errLogs
   //       - nodeId = () => <str>nodeId
   //       - snap = () => <obj>nodeData.value
   //       - snapData = () => <obj>nodeData
@@ -51,6 +52,8 @@ module.exports = function() {
   //       - next = () => nodeAPI
   //       - del = () => <Promise>
   //       - link = (<str>name, <str>anotherNodeId) => nodeAPI
+  //       - unlink = (<str>name, <str>anotherNodeId) => nodeAPI
+  //       - fetchLinks = () => nodeAPI
   //       - setModel = (<str>modelName) => nodeAPI
   //       - method = (<str>methodName, <func>method) => nodeAPI
   //     } EOF nodeAPI
@@ -145,6 +148,8 @@ module.exports = function() {
       let nodeAPI = {};
       let nodeData = {};
       let queue = cope.util.makeQueue();
+
+      // Set initial query of the node
       let query = null;
       if (typeof a == 'string') {
         nodeData.nodeId = a;
@@ -180,8 +185,20 @@ module.exports = function() {
         };
       }
 
-      let nodeId = function(callback) {
+      // Log errors
+      let errLogs = [];
+      let error = function(methodName, err) {
+        errLogs = errLogs.concat({
+          method: methodName,
+          err: err
+        });
+      };
+
+      // Fetch the nodeId based on the above query
+      // Always callback with the fetched id or null
+      let checkId = function(callback) {
         if (typeof callback != 'function') {
+          error('checkId(callback)', 'lack of callback');
           return;
         }
         if (nodeData && nodeData.nodeId) {
@@ -199,16 +216,20 @@ module.exports = function() {
 
                 id = nodeData.nodeId;
               } else {
-                // TBD: How to callback with this ERROR???
-                errObj = debug('graphAPI.node(a): failed to find the exact node', 
-                  query, err, '| # nodes = ' + (arr && arr.length));
+                errObj = { 
+                  msg: 'graphAPI.node(a): failed to find the exact node', 
+                  query: query, 
+                  err: err, 
+                  result: '# nodes = ' + (arr && arr.length)
+                };
+                error('checkId(callback)', errObj);
               }
-              callback(errObj, id);
+              callback(id);
               mg.close();
             });
           });
         }
-      }; // end of nodeId
+      }; // end of checkId
 
       let setData = function(obj, callback) {
         obj.updatedAt = new Date().getTime();
@@ -217,13 +238,17 @@ module.exports = function() {
           mg.collection('nodes').findOneAndUpdate(query, {
             $set: obj
           }, (err, result) => {
+            if (err) {
+              error('setData(obj, callback)', err);
+            }
             callback();
+            mg.close();
           });
         });
       }; // end of setData
 
       let getData = function(callback) {
-        nodeId(id => {
+        checkId(id => {
           db.useMongo(mg => {
             mg.collection('nodes').find(query).toArray((err, arr) => {
               if (arr && arr.length === 1) {
@@ -237,6 +262,16 @@ module.exports = function() {
           });
         });
       }; // end of getData
+
+      nodeAPI.debug = function(print) {
+        if (print) {
+          debug('------------------------------------------');
+          debug('[node.debug] nodeId = ' + nodeAPI.nodeId());
+          debug(errLogs);
+          debug('------------------------------------------');
+        }
+        return errLogs;
+      };
 
       nodeAPI.nodeId = function() {
         return nodeData && nodeData.nodeId;
@@ -270,7 +305,6 @@ module.exports = function() {
 
         if (obj) { // write nodeData to db
           queue.add(() => {
-            // TBD getData
             setData({ value: obj }, () => { // overwrite `value`
               getData(() => { // update local `nodeData`
                 queue.next();
@@ -320,24 +354,146 @@ module.exports = function() {
 
       nodeAPI.del = function() {
         return new Promise((resolve, reject) => {
-          db.useMongo(mg => {
-            mg.collection('nodes').findOneAndDelete(query, (err, result) => {
-              debug(result);
-              if (result && result.value) {
-                nodeData = {};
-                resolve();
-              } else {
-                debug('[ERR] nodeAPI.del', err, result);
-                reject('Failed to delete non-existing node, or something just went wrong');
-              }
-            });
-          });
+          checkId(id => {
+            if (id) {
+              db.useMongo(mg => {
+                mg.collection('nodes').findOneAndDelete({ nodeId: id }, (err, result) => {
+                  if (err) { 
+                    error('node.del', err); 
+                    reject('Failed to delete non-existing node, or something just went wrong');
+                  } else {
+                    nodeData = {};
+                    resolve();
+                  }
+                  
+                  // Remove related links
+                  cope.G.removeLinks('nodeId').catch(err => {
+                    error('node.del', err);
+                  })
+
+                  mg.close();
+                });
+              }); // end of .. useMongo ..
+            } else {
+              reject('nodeAPI.del(): failed to find the node');
+            } // end of else
+          }); // end of checkId
         }); // end of Promise
       }; // end of nodeAPI.del
 
-      nodeAPI.link = function() {
-        // TBD 
+      nodeAPI.link = function(linkName, targetNodeId) {
+        queue.add(() => {
+          checkId(id => {
+            if (typeof linkName == 'string' 
+              && typeof targetNodeId == 'string'
+              && id) {
+              let obj = {};
+              obj.source = id;
+              obj.target = targetNodeId;
+              obj.name = linkName;
+
+              let q = { '$and': [
+                { source: id },
+                { target: targetNodeId },
+                { name: linkName }
+              ]};
+
+              db.useMongo(mg => {
+                mg.collection('links').find(q).toArray((err, docs) => {
+                  if (docs && docs.length > 0) {
+                    queue.next(); // already existed
+                  } else {
+                    mg.collection('links').insertOne(obj, (err, result) => {
+                      if (!err) {
+                        queue.next();
+                      } else {
+                        error('node.link', err);
+                      }
+                      mg.close();
+                    }); // end of .. insertOne ..
+                  } 
+                }); // end of .. findOne ..
+              }); // end of .. useMongo ..
+            } else {
+              error('node.link', obj);
+            } // end of else
+          }); // end of checkId
+        }); // end of queue.add
+        return nodeAPI;
       }; // end of nodeAPI.link
+
+      nodeAPI.unlink = function(linkName, targetNodeId) {
+
+        queue.add(() => {
+          checkId(id => {
+            if (typeof linkName == 'string' 
+              && typeof targetNodeId == 'string'
+              && id) {
+              let obj = {};
+              obj.source = id; //nodeAPI.nodeId();
+              obj.target = targetNodeId;
+              obj.name = linkName;
+              let q = { '$and': [
+                { source: id },
+                { target: targetNodeId },
+                { name: linkName }
+              ]};
+                db.useMongo(mg => {
+                  mg.collection('links').findOneAndDelete(q, (err, result) => {
+                    queue.next();
+                    mg.close();
+                  });
+                });
+            } else {
+              error('node.unlink', {
+                name: linkName,
+                target: targetNodeId,
+                source: id
+              });
+            } // end of else
+          }); // end of checkId
+        }); // end of queue.add
+        return nodeAPI;
+      }; // end of nodeAPI.unlink
+
+      nodeAPI.fetchLinks = function() {
+        queue.add(() => {
+          checkId(id => {
+            if (!id) {
+              error('node.fetchLinks', { nodeId: id });
+              queue.next();
+              return;
+            } 
+            db.useMongo(mg => {
+              mg.collection('links').find({
+                '$or': [
+                  { target: id },
+                  { source: id }
+                ]
+              }).toArray((err, docs) => {
+                nodeData.links = [];
+                if (err) { error('node.fetchLinks', err); }
+                if (!docs) {
+                  docs = [];
+                }
+                nodeData.links = docs.map(doc => {
+                  let name = doc.name;
+                  let target = doc.target;
+                  let source = doc.source;
+                  return {
+                    name: name,
+                    target: target,
+                    source: source
+                  };
+                });
+                queue.next();
+                mg.close();
+              }); // end of .. toArray ..
+            }); // end of .. useMongo ..
+          }); // end of checkId
+        }); // end of queue.add
+        return nodeAPI;
+      }; // end of nodeAPI.fetchLnks
 
       nodeAPI.setModel = function(modelName) {
         if (typeof modelName == 'string') {
@@ -361,6 +517,83 @@ module.exports = function() {
 
       return nodeAPI;
     }; // end of graphAPI.node
+
+    graphAPI.findLinks = function(q) {
+      let query = null;
+      if (typeof q == 'string') {
+        query = {
+          '$or': [
+            { target: q },
+            { source: q }
+          ]
+        };
+      } else if (typeof q == 'object') {
+        query = {
+          '$and': function(q) {
+            let arr = [];
+            for (let key in q) {
+              let tmp = {};
+              tmp[key] = q[key];
+              arr = arr.concat(tmp);
+            }
+            return arr;
+          }(q)
+        };
+      }
+      return new Promise((resolve, reject) => {
+        if (!query) {
+          reject(debug('[ERR] graphAPI.findLinks(query): Invalid query'));
+          return;
+        }
+        db.useMongo(mg => {
+          mg.collection('links').find(query).toArray((err, docs) => {
+            if (!err) {
+              resolve(docs.map(doc => {
+                return {
+                  name: doc.name,
+                  target: doc.target,
+                  source: doc.source
+                }
+              }));
+            } else {
+              debug('[ERR] graphAPI.findLinks(query)', err);
+              reject(err);
+            }
+            mg.close();
+          });
+        });
+        return;
+      });
+    }; // end of graphAPI.findLinks
+
+    graphAPI.removeLinks = function(q) {
+      let query = null;
+      if (typeof q == 'string') {
+        query = {
+          '$or': [
+            { target: q },
+            { source: q }
+          ]
+        };
+      } else if (typeof q == 'object') {
+        query = {
+          '$and': q
+        };
+      }
+      return new Promise((resolve, reject) => {
+        // TBD
+        db.useMongo(mg => {
+          mg.collection('links').deleteMany(query, (err, result) => {
+            if (!err) {
+              resolve(result);
+            } else {
+              reject(err);
+            }
+            mg.close();
+          });
+        }); // end of useMongo
+      });
+    }; // end of graphAPI.removeLinks
 
     return graphAPI;
   }(); // end of cope.G
