@@ -1,3 +1,5 @@
+let userData = null;
+
 // Test with fetch API
 fetch('/api/test').then(res => {
   console.log(res.json());
@@ -18,7 +20,8 @@ buttons = [
   'signIn',
   'signOut',
   'delUser',
-  'newPost'
+  'newPost',
+  'getPosts'
 ].map(x => {
   return '<button onclick="' + x + '()">' 
     + x + '</button>';
@@ -38,6 +41,7 @@ function fetchUser() {
     console.log('/api/u/fetch', res);
     let data = res.data;
     if (data) {
+      userData = data;
       $('#msg').html('Welcome, ' + data.value.email);
     }
   });
@@ -129,11 +133,19 @@ function getPosts() {
   $.post({
     url: '/api/get/posts',
     data: { 
-      authorId: '111', //TBD: get ID of 'taster.client@xmail.com',
+      authorId: userData.nodeId || '_noid_'
     }
   }).done(res => {
     console.log(res);
-    let num = -1;
-    $('#msg').html('Found ' + num + ' posts.');
+    let data = res.data;
+    let posts = [];
+    for (let id in data) {
+      posts = posts.concat(data[id]);
+      $('#msg').append('<div><h3>' + data[id].value.title + '</h3><p>'
+        + data[id].value.content
+        + '</p></div>');
+    }
+    let num = posts.length;
+    $('#msg').append('Found ' + num + ' posts.');
   });
 };

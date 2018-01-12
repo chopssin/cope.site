@@ -124,19 +124,33 @@ module.exports = function() {
           });
         });
       });
-    });
+    }); // end of posts.addPost
 
-    // posts.getMyPosts
+    // posts.getPosts
     model.method('getPosts', (obj, userData) => {
 
       // obj.viewScope == 'PUBLIC', 'MEMBERS', 'ADMINS', 'ONLY_ME', 'CHN[ ... ]', 'FOLLOWING', 'MSG( ... )'
       // Get authorIds based on obj.viewScope
       // Get posts based on authorIds, and adjust posts based on their privacy
-      // Sort chronologically, starting with  most recent posts
+      // Sort chronologically, starting with the most recent posts
       return new Promise((resolve, reject) => {
-        // TBD
+        let reader = userData || null;
+        let authorId = obj.authorId;
+
+        debug('LINKS of authorId', authorId);
+        G.findLinks({ 
+          '$name': 'createdBy', '$target': authorId 
+        }).then(links => {
+          debug('LINKS', links);
+
+          G.findNodes(links.map(link => link.source)).then(nodesData => {
+            resolve(nodesData);
+          });
+        }).catch(err => {
+          reject(err);
+        });
       });
-    });
+    }); // end of posts.getPosts
 
   }); // end of model "posts"
 

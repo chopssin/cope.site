@@ -33,7 +33,7 @@ apis.set('post', '/u/signup', 'users', 'addUser');
 apis.set('post', '/u/get/profile', 'users', 'getUserProfile');
 apis.set('post', '/u/deluser', 'users', 'delUser');
 apis.set('post', '/create/post', 'posts', 'addPost');
-apis.set('get', '/get/posts', 'posts', 'getPosts');
+apis.set('post', '/get/posts', 'posts', 'getPosts');
 
 apis.get().map(a => {
   try {

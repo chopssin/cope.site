@@ -607,7 +607,7 @@ module.exports = function() {
           return;
         } 
         db.useMongo(mg => {
-          mg.collection('nodes').find(q).toArray((err, docs) => {
+          mg.collection('nodes').find(query).toArray((err, docs) => {
             if (!err) {
               let nodeDataObj = {};
               docs.map(doc => {
@@ -618,6 +618,7 @@ module.exports = function() {
               reject(debug('[ERR] graphAPI.findNodes(query)', err));
               return;
             }
+            mg.close();
           }); // end of .. toArray ..
         }); // end of db.useMongo ...
       }); // end of Promise
@@ -636,9 +637,9 @@ module.exports = function() {
         query = {
           '$and': function(q) {
             let arr = [];
-            for (let key in q) {
+            for (let key in q) { // e.g. q = { $target: <someId> }
               let tmp = {};
-              tmp[key] = q[key];
+              tmp[validateKey(key)] = q[key];
               arr = arr.concat(tmp);
             }
             return arr;
