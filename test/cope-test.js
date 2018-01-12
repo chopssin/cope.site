@@ -84,7 +84,7 @@ module.exports = function() {
       debug('userData', userData);
       next();
     }).catch(err => {
-      debug('[ERR] userModel.signIn(obj): failed');
+      debug('[ERR] userModel.signIn(obj)', err);
     });
   });
 
@@ -111,7 +111,7 @@ module.exports = function() {
   test('Find thier relationship by `foodie`.fetchLinks()', next => {
     let foodie = M.model('users').node({ email: 'foodie@xmail.com' });
     foodie.fetchLinks().next(() => {
-      let links = foodie.snapData() && foodie.snapData().links;
+      let links = foodie.snap.data() && foodie.snap.data().links;
       debug(links);
       if (Array.isArray(links) && links.length == 1) {
         next();
@@ -122,7 +122,7 @@ module.exports = function() {
   test('Find thier relationship by `taster`.fetchLinks()', next => {
     let taster = M.model('users').node({ email: 'taster@xmail.com' });
     taster.fetchLinks().next(() => {
-      let links = taster.snapData() && taster.snapData().links;
+      let links = taster.snap.data() && taster.snap.data().links;
       debug(links);
       if (Array.isArray(links) && links.length == 1) {
         next();
@@ -210,7 +210,8 @@ module.exports = function() {
     });
   });
 
-  test('All tests executed.', next => {
+  test('All tests executed?', next => {
+    debug('\n\n\t\t\t\tYes :)\n\n');
     debug('---------------------');
     next();
   });

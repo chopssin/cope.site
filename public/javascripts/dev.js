@@ -17,7 +17,8 @@ buttons = [
   'signUp',
   'signIn',
   'signOut',
-  'delUser'
+  'delUser',
+  'newPost'
 ].map(x => {
   return '<button onclick="' + x + '()">' 
     + x + '</button>';
@@ -111,3 +112,28 @@ function delUser() {
   });
 };
 
+function newPost() {
+  $.post({
+    url: '/api/create/post',
+    data: { 
+      title: 'Noodles are awesome',
+      content: 'Tasty! :)'
+    }
+  }).done(res => {
+    console.log(res);
+    $('#msg').html('Posted.');
+  });
+};
+
+function getPosts() {
+  $.post({
+    url: '/api/get/posts',
+    data: { 
+      authorId: '111', //TBD: get ID of 'taster.client@xmail.com',
+    }
+  }).done(res => {
+    console.log(res);
+    let num = -1;
+    $('#msg').html('Found ' + num + ' posts.');
+  });
+};

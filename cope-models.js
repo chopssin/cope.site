@@ -31,7 +31,7 @@ module.exports = function() {
             model.createNode().then(nodeId => {
               let u = model.node(nodeId);
               u.val(obj).fetch().next(() => {
-                resolve(u.snap());
+                resolve(u.snap.value());
               });
             });
           } // end of else
@@ -56,7 +56,7 @@ module.exports = function() {
 
         u.fetch().next(() => {
           if (u.nodeId()) {
-            resolve(u.snapData());
+            resolve(u.snap.data());
           } else {
             reject('[ERR] failed to get user by ' + JSON.stringify(obj));
           }
@@ -71,7 +71,7 @@ module.exports = function() {
         let u = model.node({ email: email }); 
         u.fetch().next(() => {
           if (u.nodeId()) {
-            resolve(u.snap());
+            resolve(u.snap.value());
           } else {
             reject('[ERR] failed to get user by ' + JSON.stringify(obj));
           }
@@ -110,13 +110,14 @@ module.exports = function() {
           let author = userData || null;
           let value = {};
           
+          // TBD: check appId, and so on.
+          debug('author', author);
           if (author && author.nodeId) {
-            // TBD: test the following
             post.link('createdBy', author.nodeId);
           }
           post.val(obj).fetch().next(() => {
-            if (post.snapData()) {
-              resolve(post.snapData())
+            if (post.snap.data()) {
+              resolve(post.snap.data())
             } else {
               reject('[ERR] failed to add the new post')
             }
@@ -124,6 +125,19 @@ module.exports = function() {
         });
       });
     });
+
+    // posts.getMyPosts
+    model.method('getPosts', (obj, userData) => {
+
+      // obj.viewScope == 'PUBLIC', 'MEMBERS', 'ADMINS', 'ONLY_ME', 'CHN[ ... ]', 'FOLLOWING', 'MSG( ... )'
+      // Get authorIds based on obj.viewScope
+      // Get posts based on authorIds, and adjust posts based on their privacy
+      // Sort chronologically, starting with  most recent posts
+      return new Promise((resolve, reject) => {
+        // TBD
+      });
+    });
+
   }); // end of model "posts"
 
   return false;

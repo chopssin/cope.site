@@ -44,26 +44,38 @@ module.exports = function() {
   //     - node = (<str>nodeId || <obj>query) => <obj>nodeAPI: {
   //       - debug = (<bool>print) => <arr>errLogs
   //       - nodeId = () => <str>nodeId
-  //       - snap = () => <obj>nodeData.value
-  //       - snapData = () => <obj>nodeData
-  //       - fetch = () => nodeAPI // to fetch "value"
+  //       - snap = <obj>snapAPI: {
+  //         - targets = (<str>linkName) => <arr>targetNodeIds
+  //         - sources = (<str>linkName) => <arr>sourceNodeIds
+  //         - data = () => <obj>nodeData
+  //         - value = () => nodeData.value
+  //       }
+  //       - TBD: REMOVE snap = () => <obj>nodeData.value
+  //       - TBD: REMOVE snapData = () => <obj>nodeData
   //       - val = (<obj>newValue) || (<str>, <mixed>) => nodeAPI // to update "value"
   //       - newVal = (<obj>newValue) => nodeAPI // to rewrite "value"
   //       - next = () => nodeAPI
   //       - del = () => <Promise>
   //       - link = (<str>name, <str>anotherNodeId) => nodeAPI
   //       - unlink = (<str>name, <str>anotherNodeId) => nodeAPI
+  //       - fetchData = () => nodeAPI // to fetch "data"
   //       - fetchLinks = () => nodeAPI
+  //       - fetch = () => nodeAPI // fetch both data and links
   //       - setModel = (<str>modelName) => nodeAPI
   //       - method = (<str>methodName, <func>method) => nodeAPI
   //     } EOF nodeAPI
-  //     - findNodes = (<obj>query) => <Promise>
+  //     - findNodes = (<obj>query) => <Promise>: {
+  //       - then = (<callback>(<obj>nodeDataObj)) => <Promise>
+  //     }
+  //     - findLinks = (<obj>query) => <Promise>
+  //     - removeLinks = (<obj>query) => <Promise>
   //   } EOF graphAPI
   //   - M = <obj>modelManagerAPI: {
   //     - createModel = (<str>modelName, <func>(<= <obj>model)) => false
   //     - model = (<str>modelName) => null || <obj>modelAPI: {
   //       - createNode
   //       - node
+  //       - TBD: findNodes = (<obj>query) => <Promise>
   //       - method
   //     } EOF modelAPI
   //   } EOF modelAPI
@@ -99,6 +111,18 @@ module.exports = function() {
 
   cope.G = function() {
     let graphAPI = {};
+
+    let validateKey = function(key) {
+      let validKey = '__INVALID_KEY__';
+      if (typeof key == 'string') {
+        if (key.charAt(0) == '$') {
+          validKey = key.slice(1);
+        } else {
+          validKey = 'value.' + key;
+        }
+      }  
+      return validKey;
+    };
 
     graphAPI.createNode = function() {
       return new Promise((resolve, reject) => {
@@ -158,14 +182,7 @@ module.exports = function() {
       } else if (typeof a == 'object') {
         query = {};
         for (let key in a) {
-          // TBD: validate key here
-          // key = validateKey(key);
-          let trueKey = 'value.' + key;
-          ['nodeId', 'model'].map(k => {
-            if (k == key) {
-              trueKey = key;
-            }
-          });
+          trueKey = validateKey(key);
           query[trueKey] = a[key];
         }
       } else {
@@ -277,22 +294,51 @@ module.exports = function() {
         return nodeData && nodeData.nodeId;
       }; // end of nodeAPI.nodeId
 
-      nodeAPI.snapData = function() {
+      //nodeAPI.snapData = function() {
+      //  return nodeData;
+      //}; // end of nodeAPI.snapData
+
+      //nodeAPI.snap = function() {
+      //  return nodeData && nodeData.value || {};
+      //}; // end of nodeAPI.snap
+
+      nodeAPI.snap = {};
+
+      nodeAPI.snap.data = function() {
         return nodeData;
-      }; // end of nodeAPI.snapData
+      }; // end of nodeAPI.snap.data
 
-      nodeAPI.snap = function() {
+      nodeAPI.snap.value = function() {
         return nodeData && nodeData.value || {};
-      }; // end of nodeAPI.snap
+      };
 
-      nodeAPI.fetch = function() {
-        queue.add(() => {
-          getData(() => {
-            queue.next();
-          });
-        });
-        return nodeAPI;
-      };  // end of nodeAPI.fetch
+      nodeAPI.snap.targets = function(linkName) {
+        let links = nodeAPI.snap.data() && nodeAPI.snap.data().links;
+        let nodes = [];
+        if (Array.isArray(links)) {
+          nodes = links.reduce((arr, link) => {
+            if (link.source == nodeAPI.nodeId()) {
+              arr = arr.concat(link.target);
+            }
+            return arr;  
+          }, []);  
+        }
+        return nodes;
+      }; // end of nodeAPI.snap.targets
+
+      nodeAPI.snap.sources = function(linkName) {
+        let links = nodeAPI.snap.data() && nodeAPI.snap.data().links;
+        let nodes = [];
+        if (Array.isArray(links)) {
+          nodes = links.reduce((arr, link) => {
+            if (link.target == nodeAPI.nodeId()) {
+              arr = arr.concat(link.source);
+            }
+            return arr;  
+          }, []);  
+        }
+        return nodes;
+      }; // end of nodeAPI.snap.sources
 
       nodeAPI.newVal = function(a, b) {
         let obj = null;
@@ -456,6 +502,15 @@ module.exports = function() {
         return nodeAPI;
       }; // end of nodeAPI.unlink
 
+      nodeAPI.fetchData = function() {
+        queue.add(() => {
+          getData(() => {
+            queue.next();
+          });
+        });
+        return nodeAPI;
+      };  // end of nodeAPI.fetchData
+
       nodeAPI.fetchLinks = function() {
         queue.add(() => {
           checkId(id => {
@@ -495,6 +550,10 @@ module.exports = function() {
         return nodeAPI;
       }; // end of nodeAPI.fetchLnks
 
+      nodeAPI.fetch = function() {
+        return nodeAPI.fetchData().fetchLinks();
+      }; // end of nodeAPI.fetch
+
       nodeAPI.setModel = function(modelName) {
         if (typeof modelName == 'string') {
           queue.add(() => {
@@ -517,6 +576,52 @@ module.exports = function() {
 
       return nodeAPI;
     }; // end of graphAPI.node
+
+    graphAPI.findNodes = function(q) {
+      let query = null;
+      if (Array.isArray(q)) { // array of nodeIds
+        query = {
+          '$or': q.map(nid => {
+            return {
+              'nodeId': nid
+            };
+          })
+        };
+      } else if (typeof q == 'object') { // normal query
+        query = {
+          '$and': function(q) {
+            let arr = [];
+            for (let key in q) {
+              let trueKey = validateKey(key);
+              let tmp = {};
+              tmp[trueKey] = q[key];
+              arr = arr.concat(tmp);
+            }
+            return arr;
+          }(q)
+        };
+      }
+      return new Promise((resolve, reject) => {
+        if (!query) {
+          reject(debug('[ERR] graphAPI.findNodes(query): Invalid query'));
+          return;
+        } 
+        db.useMongo(mg => {
+          mg.collection('nodes').find(q).toArray((err, docs) => {
+            if (!err) {
+              let nodeDataObj = {};
+              docs.map(doc => {
+                nodeDataObj[doc.nodeId] = doc;
+              });
+              resolve(nodeDataObj); 
+            } else {
+              reject(debug('[ERR] graphAPI.findNodes(query)', err));
+              return;
+            }
+          }); // end of .. toArray ..
+        }); // end of db.useMongo ...
+      }); // end of Promise
+    }; // end of graphAPI.findNodes
 
     graphAPI.findLinks = function(q) {
       let query = null;
@@ -622,13 +727,20 @@ module.exports = function() {
         let query = null;
         if (typeof a == 'string') {
           query = {};
-          query.nodeId = a;
-          query.model = modelName;
+          query['$nodeId'] = a;
+          query['$model'] = modelName;
         } else if (typeof a == 'object') {
-          query = Object.assign({}, a, { model: modelName }); 
+          query = Object.assign({}, a, { '$model': modelName }); 
         }
         return cope.G.node(query);
       }; // end of modelAPI.node
+
+      modelAPI.findNodes = function(q) {
+        if (typeof q == 'object') {
+          q['$model'] = modelName;
+        }
+        return cope.G.findNodes(q);
+      }; // end of modelAPI.findNodes
  
       modelAPI.method = function(name, fn) {
         if (!modelAPI[name] && (typeof fn == 'function')) {
