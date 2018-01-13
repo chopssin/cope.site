@@ -35,6 +35,11 @@ apis.set('post', '/u/deluser', 'users', 'delUser');
 apis.set('post', '/create/post', 'posts', 'addPost');
 apis.set('post', '/get/posts', 'posts', 'getPosts');
 
+apis.set('post', '/fai/users/add', 'faiUsers', 'add');
+apis.set('post', '/fai/users/get', 'faiUsers', 'get');
+apis.set('post', '/fai/users/set', 'faiUsers', 'set');
+apis.set('post', '/fai/users/del', 'faiUsers', 'del');
+
 apis.get().map(a => {
   try {
     router[a.method](a.apiPath, function(req, res, next) {

@@ -1,6 +1,6 @@
 let G = require('./cope').G;
 let M = require('./cope').M;
-let debug = require('debug')('cope.site:cope-model')
+let debug = require('debug')('cope.site:cope-models');
 
 module.exports = function() {
   debug('Set default Cope models');

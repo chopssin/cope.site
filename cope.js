@@ -50,8 +50,6 @@ module.exports = function() {
   //         - data = () => <obj>nodeData
   //         - value = () => nodeData.value
   //       }
-  //       - TBD: REMOVE snap = () => <obj>nodeData.value
-  //       - TBD: REMOVE snapData = () => <obj>nodeData
   //       - val = (<obj>newValue) || (<str>, <mixed>) => nodeAPI // to update "value"
   //       - newVal = (<obj>newValue) => nodeAPI // to rewrite "value"
   //       - next = () => nodeAPI
@@ -75,7 +73,7 @@ module.exports = function() {
   //     - model = (<str>modelName) => null || <obj>modelAPI: {
   //       - createNode
   //       - node
-  //       - TBD: findNodes = (<obj>query) => <Promise>
+  //       - findNodes = (<obj>query) => <Promise>
   //       - method
   //     } EOF modelAPI
   //   } EOF modelAPI

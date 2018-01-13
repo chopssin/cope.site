@@ -136,6 +136,7 @@ function getPosts() {
       authorId: userData.nodeId || '_noid_'
     }
   }).done(res => {
+    $('#msg').html('');
     console.log(res);
     let data = res.data;
     let posts = [];
