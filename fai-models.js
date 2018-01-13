@@ -2,18 +2,19 @@ let G = require('./cope').G;
 let M = require('./cope').M;
 let debug = require('debug')('cope.site:fai-models');
 
-// faiUsers
-// faiApps
+// +faiUsers
+// +faiApps
 //   app
 //     owner: <faiUser>
 //     admins: { <faiUser> }
-//     members: { <appMember> }
-//     groups: { <appGroup> }
-//     messages
-//     posts
-//     items
-//     reqs
-//     homepage
+//     +members: { <appMember> }
+//     +groups: { <appGroup> }
+//     +followingships
+//     +messages
+//     +posts
+//     +items
+//     +reqs
+//     +homepage
 
 module.exports = function() {
   M.createModel('faiUsers', model => {
@@ -40,8 +41,8 @@ module.exports = function() {
               let u = model.node(nodeId);
               u.val({
                 email: email, pwd: pwd
-              }).fetch().next(() => {
-                resolve(u.snap.value());
+              }).fetchData().next(() => {
+                resolve({ ok: true , data: u.snap.data() });
               });
             });
           }
@@ -51,21 +52,46 @@ module.exports = function() {
 
     model.method('get', (obj, userData) => {
       return new Promise((resolve, reject) => {
-        
+        let u = model.node(obj).fetchData();
+        u.next(() => {
+          if (u.nodeId() && u.nodeId() == userData.nodeId) {
+            resolve({ ok: true , data: u.snap.data() });
+          } else {
+            reject('Permission denied.');
+          }
+        });
       });
-    });
+    }); // end of faiUsers.get
 
     model.method('set', (obj, userData) => {
       return new Promise((resolve, reject) => {
-        
+        let u = model.node(obj).fetchData();
+        u.next(() => {
+          if (u.nodeId() && u.nodeId() == userData.nodeId) {
+            u.val(obj).fetchData().next(() => {
+              resolve({ ok: true , data: u.snap.data() });
+            });
+          } else {
+            reject('Permission denied.');
+          }
+        });
       });
-    });
+    }); // end of faiUsers.set
 
     model.method('del', (obj, userData) => {
       return new Promise((resolve, reject) => {
-        
+        let u = model.node(obj).fetchData();
+        u.next(() => {
+          if (u.nodeId() && u.nodeId() == userData.nodeId) {
+            u.del().then(() => {
+              resolve({ ok: true });
+            });
+          } else {
+            reject('Permission denied.');
+          }
+        });
       });
-    });
+    }); // end of faiUsers.del
   }); // end of <faiUser>
   return false;
 }();
