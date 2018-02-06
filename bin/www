@@ -11,7 +11,6 @@ let sess = app.get('sess');
 let sharedsession = require('express-socket.io-session');
 let cope = require('../cope'); 
 let copeModels = require('../cope-models');
-let copeModels = require('../fai-models');
 let copeTests = require('../test/cope-test');
 
 /**

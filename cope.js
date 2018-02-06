@@ -229,6 +229,7 @@ module.exports = function() {
                 // Update `nodeData`
                 nodeData = arr[0];
 
+                // Update `nodeId`
                 id = nodeData.nodeId;
               } else {
                 errObj = { 
@@ -389,7 +390,9 @@ module.exports = function() {
       nodeAPI.next = function(callback) {
         queue.add(() => {
           if (typeof callback == 'function') {
-            callback();
+            checkId(id => {
+              callback();
+            });
           }
           queue.next();
         });
