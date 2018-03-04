@@ -324,13 +324,27 @@ module.exports = function() {
     model.method('updatePost', (obj, userData) => {
       return new Promise((resolve, reject) => {
         model.checkUpdatePost(obj, userData).then(valid => {
+
+          debug('valid', valid);
+
           let postNode = model.node(valid.query);
-          let idx = valid.idx;
           postNode.fetchData().next(() => {
             if (postNode.nodeId()) { // post was found
               let postValue = postNode.snap.value();
-              debug('postValue', postValue);
-              let postContent = JSON.parse(postValue.content) || []
+              debug('updatePost: postValue', postValue);
+
+              let postContent = [];
+              try {
+                postContent = JSON.parse(postValue && postValue.content);
+              } catch (err) {
+                postContent = [];
+                debug('updatePost', err);
+              }
+
+              let idx = valid.idx;
+              if (isNaN(idx)) { 
+                idx = postContent.length;
+              }
               // postContent = [ <elem> ]
               // <elem> = {
               //   header: <String>,
@@ -366,12 +380,14 @@ module.exports = function() {
               }
 
               postContent = JSON.stringify(postContent);
-              debug(postContent);
               // How to store an array in MongoDB
               // TBD Stringify JSON
               postNode.val({ content: postContent })
                 .next(() => {
-                  resolve(postNode.snap.value());
+                  debug('updated', postNode.snap.data());
+                  let postValue = postNode.snap.value();
+                  postValue.content = JSON.parse(postValue.content);
+                  resolve(postValue);
               });
             }
           });
@@ -402,6 +418,7 @@ module.exports = function() {
     }); // end of `checkAddPost`
 
     model.method('checkUpdatePost', (obj, userData) => {
+      debug('checkUpdatePost', obj);
       return new Promise((resolve, reject) => {
         valid = {};
 
@@ -416,10 +433,19 @@ module.exports = function() {
           valid.copeUserNodeId = copeUserNodeId;
         }
         
-        let updateAt = parseInt(obj.updateAt, 10) || null; 
-        let insertAt = parseInt(obj.insertAt, 10) || null;
-        let idx = parseInt(obj.idx, 10) || null;
-        let moveTo = parseInt(obj.moveTo, 10) || null;
+        let updateAt = parseInt(obj.updateAt, 10); 
+        let insertAt = parseInt(obj.insertAt, 10);
+        let idx = parseInt(obj.idx, 10);
+        let moveTo = parseInt(obj.moveTo, 10);
+        debug('\n\nNUM\n\n', updateAt, insertAt, idx, moveTo);
+
+        if (typeof obj.postId == 'string') {
+          valid.query = {};
+          valid.query.postId = obj.postId;
+        } else {
+          reject('[ERR] checkUpdatePost: invalid input that found no `postId`', obj);
+          return;
+        }
 
         if (!isNaN(updateAt)) {
           valid.cmd = 'update';
@@ -432,16 +458,6 @@ module.exports = function() {
           valid.idx = idx;
           valid.moveTo = moveTo;
           resolve(valid);
-          return;
-        } else  {
-          reject('[ERR] checkUpdatePost: invalid input', obj);
-        }
-
-        if (typeof obj.postId == 'string') {
-          valid.query = {};
-          valid.query.postId = obj.postId;
-        } else {
-          reject('[ERR] checkUpdatePost: invalid input that found no `postId`', obj);
           return;
         }
 

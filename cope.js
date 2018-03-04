@@ -184,6 +184,7 @@ module.exports = function() {
           query[trueKey] = a[key];
         }
       } else {
+        debug('[ERR] graphAPI.node(a): Invalid node', a);
         return null;
       }
 
