@@ -1,152 +1,179 @@
-let userData = null;
+let tests = [];
+let curr = null;
+let send = function(path, params, method) {
+  return new Promise((resolve, reject) => {
+    console.log(path, params);
+    let cmd = {};
+    cmd.method = method || 'post';
+    cmd.url = '/api' + path;
+    if (params) { 
+      cmd.data = params; 
+    }
+    $.ajax(cmd).done(res => {
+      console.log(path, res);
+      resolve(res);
+    });
+  });
+};
 
-// Test with fetch API
-fetch('/api/test').then(res => {
-  console.log(res.json());
+let next = function(obj) {
+  curr = null;
+  if (tests.length > 0) {
+    curr = tests[0];
+    tests = tests.slice(1);
+    curr(obj);
+  }
+};
+
+let test = function(func) {
+  tests = tests.concat(func);
+  if (!curr) {
+    next();
+  }
+};
+
+// Start tests
+
+test(() => {
+  let snap = {};
+  send('/account/add', {
+    email: 'test@xmail.com',
+    pwd: 'test',
+    confirmedPwd: 'test'
+  }).then(res => {
+    snap.myId = res.data.userId;
+    snap.myPwd = 'test';
+    next(snap);
+  })
 });
 
-// Test with jQuery.ajax
-$.get({
-  url: '/api/test'
-}).done(res => {
-  console.log('/api/test', res);
+test(snap => {
+  // use `snap.account.userId`
+  send('/profile/get', {
+    //userId: snap.account.userId
+    email: 'test@xmail.com'
+  }).then(res => {
+    next(snap);
+  });
 });
 
-// Build buttons
-buttons = [
-  'getUser',
-  'fetchUser',
-  'signUp',
-  'signIn',
-  'signOut',
-  'delUser',
-  'newPost',
-  'getPosts'
-].map(x => {
-  return '<button onclick="' + x + '()">' 
-    + x + '</button>';
-}).reduce((a, b) => {
-  return a + b;
-}, '');
-
-$('#buttons').html(buttons);
-
-// Fetch the user
-fetchUser();
-
-function fetchUser() {
-  $.get({
-    url: '/api/u/fetch'
-  }).done(res => {
-    console.log('/api/u/fetch', res);
-    let data = res.data;
-    if (data) {
-      userData = data;
-      $('#msg').html('Welcome, ' + data.value.email);
-    }
+test(snap => {
+  send('/account/signin', {
+    email: 'test@xmail.com',
+    pwd: 'test'
+  }).then(res => {
+    next(snap);
   });
-};
+});
 
-function getUser() {
-  $.post({
-    url: '/api/u/get/profile',
-    data: { email: 'taster.client@xmail.com' }
-  }).done(res => {
-    console.log('/api/u/get/profile', res);
-    let data = res.data;
-    if (data) {
-      $('#msg').html('User existed => ' + data.email);
-    }
+test(snap => {
+  send('/app/add', {
+    appName: '智能旅圖'
+  }).then(res => {
+    snap.myAppId = res.data.appId;
+    next(snap);
   });
-}
+});
 
-function signUp() {
-  $.post({
-    url: '/api/u/signup',
-    data: { 
-      email: 'taster.client@xmail.com',
-      pwd: 'taste!'
-    }
-  }).done(res => {
-    console.log(res);
-    if (res.ok) {
-      $('#msg').html('Sign up as taster.client@xmail.com');
-    } else {
-      $('#msg').html('Failed to sign up.');
-    }
+test(snap => {
+  send('/post/add', {
+    appId: snap.myAppId,
+    title: '深入四草' 
+  }).then(res => {
+    snap.myPostId = res.data.postId;
+    next(snap);
   });
-};
+});
 
-function signIn() {
-  $.post({
-    url: '/api/u/signin',
-    data: { 
-      email: 'taster.client@xmail.com',
-      pwd: 'taste!'
-    }
-  }).done(res => {
-    console.log(res);
-    if (res.data) {
-      let data = res.data;
-      $('#msg').html('Signed in as ' + data.value.email);
-    }
+test(snap => {
+  send('/post/update', {
+    postId: snap.myPostId,
+    text: '一位大將險些埋沒在歷史之河'
+  }).then(res => {
+    next(snap);
   });
-};
+});
 
-function signOut() {
-  $.get({
-    url: '/api/u/signout'
-  }).done(res => {
-    if (res.ok) {
-      $('#msg').html('Signed out.');
-    }
+test(snap => {
+  send('/post/update', {
+    postId: snap.myPostId,
+    insertAt: 0,
+    header: '第一段',
+    text: '這裡是漢人與荷蘭人的古代戰場'
+  }).then(res => {
+    next(snap);
   });
-};
+});
 
-function delUser() {
-  $.post({
-    url: '/api/u/deluser',
-    data: { 
-      email: 'taster.client@xmail.com',
-      pwd: 'taste!'
-    }
-  }).done(res => {
-    console.log(res);
-    $('#msg').html('Sucessfully deleted the user.');
+test(snap => {
+  send('/post/update', {
+    postId: snap.myPostId,
+    idx: 1,
+    moveTo: 0
+  }).then(res => {
+    next(snap);
   });
-};
+});
 
-function newPost() {
-  $.post({
-    url: '/api/create/post',
-    data: { 
-      title: 'Noodles are awesome',
-      content: 'Tasty! :)'
-    }
-  }).done(res => {
-    console.log(res);
-    $('#msg').html('Posted.');
+test(snap => {
+  send('/post/update', {
+    postId: snap.myPostId,
+    updateAt: 0,
+    header: '第一段'
+  }).then(res => {
+    next(snap);
   });
-};
+});
 
-function getPosts() {
-  $.post({
-    url: '/api/get/posts',
-    data: { 
-      authorId: userData.nodeId || '_noid_'
-    }
-  }).done(res => {
-    $('#msg').html('');
-    console.log(res);
-    let data = res.data;
-    let posts = [];
-    for (let id in data) {
-      posts = posts.concat(data[id]);
-      $('#msg').append('<div><h3>' + data[id].value.title + '</h3><p>'
-        + data[id].value.content
-        + '</p></div>');
-    }
-    let num = posts.length;
-    $('#msg').append('Found ' + num + ' posts.');
+test(snap => {
+  send('/post/update', {
+    postId: snap.myPostId,
+    idx: 1, 
+    header: '第二段'
+  }).then(res => {
+    // TBD: next(snap);
   });
-};
+});
+
+test(snap => {
+  send('/app/post/del', {
+    postId: snap.myPostId
+  }).then(res => {
+    next(snap);
+  });
+});
+
+test(snap => {
+  send('/app/del', {
+    appId: snap.myAppId
+  }).then(res => {
+    next(snap);
+  });
+});
+
+test(snap => {
+  send('/account/signout').then(res => {
+    next(snap);
+  });
+});
+
+test(snap => {
+  send('/account/del', {
+    //userId: snap.account.userId
+    email: 'test@xmail.com',
+    pwd: 'test',
+    confirmedPwd: 'test'
+  }).then(res => {
+    next(snap);
+  });
+})
+
+test(snap => {
+  // use `snap.account.userId`
+  send('/profile/get', {
+    //userId: snap.account.userId
+    email: 'test@xmail.com'
+  }).then(res => {
+    next(snap);
+  });
+});

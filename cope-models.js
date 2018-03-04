@@ -2,6 +2,498 @@ let G = require('./cope').G;
 let M = require('./cope').M;
 let debug = require('debug')('cope.site:cope-models');
 
+/*
+let checks = {};
+let setCheck = function(name, cb) { // cb should return a Promise
+  if (checks[name]) {
+    debug('[Warning] overwritten check function `' + name + '`');
+  }
+  checks[name] = cb;
+};
+let check = function(name, obj, userData) {
+  if (checks[name]) {
+    return checks[name](obj, userData);
+  } else {
+    return new Promise((resolve, reject) => {
+      // empty function
+      resolve(obj);
+    })
+  }
+};
+
+setCheck('cope/user.addAccount', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        let email = obj.email;
+        let pwd = obj.pwd;
+        let confirmedPwd = obj.confirmedPwd;
+        if (pwd === confirmedPwd) {
+          debug('OKOKOK? addAccount');
+          let u = M.model('cope/user').node({
+            email: email,
+            pwd: pwd
+          });
+          u.next(() => {
+            if (!u.nodeId()) { // node not existed
+              resolve({
+                email: email, pwd: pwd
+              });
+            }
+          });
+        }
+      });
+});
+
+setCheck('cope/user.delAccount', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        let email = obj.email;
+        let pwd = obj.pwd;
+        let confirmedPwd = obj.confirmedPwd;
+          debug('OKOKOK? delAccount');
+        if (pwd === confirmedPwd) {
+          let u = M.model('cope/user').node({
+            email: email,
+            pwd: pwd
+          });
+          u.next(() => {
+            if (u.nodeId()) { // node existed
+              resolve({
+                nodeId: u.nodeId()
+              });
+            }
+          });
+        }
+      });
+});
+
+setCheck('cope/user.getProfile', (obj, userData) => {
+    return new Promise((resolve, reject) => {
+      let query = null;
+      if (typeof obj.email == 'string') {
+        query = { email: obj.email };
+      } else if (typeof obj.userId == 'string') {
+        query = { userId: obj.userId };
+      } 
+
+      if (query) {
+        let u = M.model('cope/user').node(query);
+        u.fetchData().next(() => {
+          if (u.nodeId()) {
+            resolve(u.snap.value());
+          }
+        });
+      }
+    });
+});
+*/
+
+module.exports = function() {
+
+  // "cope/user"
+  M.createModel('cope/user', model => {
+    model.method('addAccount', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        //check('cope/user.addAccount', obj, userData).then(valid => {
+        model.checkAddAccount(obj, userData).then(valid => {
+          model.createNode().then(nodeId => {
+            let newUserNode = model.node(nodeId);
+            valid.userId = nodeId.slice(2, 7);
+
+            debug('New account', nodeId);
+            debug('New account input', valid);
+            newUserNode.val(valid).next(() => {
+              if (newUserNode.nodeId() && newUserNode.snap.data()) {
+                resolve(newUserNode.snap.data());
+              }
+            });
+          }); 
+        }); // end of check
+      }); // end of Promise
+    }); // end of `addAccount`
+
+    model.method('delAccount', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        //check('cope/user.delAccount', obj, userData).then(valid => {
+        model.checkDelAccount(obj, userData).then(valid => {
+          model.node(valid.nodeId).del().then(() => {
+            resolve('Account deleted.');
+          }); 
+        }); // end of check
+      }); // end of Promise
+    }); // end of `addAccount`
+
+    model.method('getProfile', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        model.checkGetProfile(obj, userData).then(valid => {
+          let x = model.node(valid);
+          x.fetchData().next(() => {
+            let v = x.snap.value() || {};
+            resolve({ 
+              email: v.email || 'No Email',
+              name: v.name || 'No Name'
+            });
+          }); // end of x.fetchData 
+        }); // end of check
+      }); // end of Promise
+    }); // end of `getProfile`
+
+    model.method('signIn', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        model.checkSignIn(obj, userData).then(valid => {
+          let x = model.node(valid);
+          x.fetchData().next(() => {
+            if (x.nodeId()) {
+              resolve(x.snap.data());
+            }
+          }); // end of x.fetchData
+        });
+      });
+    }); // end of `signIn`
+
+    model.method('checkAddAccount', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        let email = obj.email;
+        let pwd = obj.pwd;
+        let confirmedPwd = obj.confirmedPwd;
+        if (pwd === confirmedPwd) {
+          let u = M.model('cope/user').node({
+            email: email,
+            pwd: pwd
+          });
+          u.next(() => {
+            if (!u.nodeId()) { // node not existed
+              resolve({
+                email: email, pwd: pwd
+              });
+            }
+          });
+        }
+      });
+    }); // end of `checkAddAccount`
+
+    model.method('checkDelAccount', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        let email = obj.email;
+        let pwd = obj.pwd;
+        let confirmedPwd = obj.confirmedPwd;
+        if (pwd === confirmedPwd) {
+          let u = M.model('cope/user').node({
+            email: email,
+            pwd: pwd
+          });
+          u.next(() => {
+            if (u.nodeId()) { // node existed
+              resolve({
+                nodeId: u.nodeId()
+              });
+            }
+          });
+        }
+      });
+    }); // end of `checkDelAccount`
+
+    model.method('checkGetProfile', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        let query = null;
+        if (typeof obj.email == 'string') {
+          query = { email: obj.email };
+        } else if (typeof obj.userId == 'string') {
+          query = { userId: obj.userId };
+        } 
+
+        if (query) {
+          resolve(query);
+        }
+      });
+    }); // end of `checkGetProfile`
+
+    model.method('checkSignIn', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        let valid = {};
+        if (obj && (typeof obj.email == 'string') && (typeof obj.pwd == 'string')) {
+          resolve({
+            email: obj.email,
+            pwd: obj.pwd
+          });
+        } else {
+          reject('Invalid sign-in input', obj);
+        }
+      });
+    });
+  }); // end of "cope/user"
+
+  M.createModel('cope/app', model => {
+    model.method('addApp', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        model.checkAddApp(obj, userData).then(valid => {
+          M.model('cope/app').createNode().then(nodeId => {
+            let appId = nodeId.slice(2, 10);
+            let newApp = model.node(nodeId);
+            newApp.val({
+              appId: appId,
+              appName: valid.appName
+            }).link('owner', valid.ownerNodeId).next(() => {
+              resolve(newApp.snap.value());
+            });
+          });
+        }); // end of checkAddApp
+      }); // end of Promise
+    }); // end of `addApp`
+
+    model.method('delApp', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        model.checkDelApp(obj, userData).then(validQuery => {
+          M.model('cope/app').node(validQuery).del().then(() => {
+            resolve('App deleted');
+          });
+        }); // end of checkDelApp
+      }); // end of Promise
+    }); // end of `delApp`
+
+    model.method('checkAddApp', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        let valid = {};
+        valid.appName = (typeof obj.appName == 'string') 
+          ? obj.appName 
+          : 'Untitled App';
+        if (userData && userData.copeUserData) {
+          debug('checkAddApp', userData);
+          valid.ownerNodeId = userData.copeUserData.nodeId;
+          resolve(valid);
+          return;
+        } else {
+          reject('Required user sign in.', userData);
+          return;
+        }
+      });
+    }); // end of `checkAddApp`
+
+    model.method('checkDelApp', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        let appId = obj.appId || null;
+        let copeUserNodeId = userData 
+          && userData.copeUserData 
+          && userData.copeUserData.nodeId 
+          || null;
+        if (copeUserNodeId && appId) {
+          let appNode = M.model('cope/app').node({ appId: appId });
+          appNode.fetchData().next(() => {
+            if (appNode.nodeId()) {
+              let appNodeId = appNode.nodeId();
+              G.findLinks(copeUserNodeId).then(links => {
+                debug(links);
+                let isOwner = false;
+                links.map(link => {
+                  if (link.name == 'owner' 
+                    && link.target == copeUserNodeId
+                    && link.source == appNodeId) {
+                    isOwner = true;
+                  }
+                });
+                if (isOwner) {
+                  resolve(appNodeId);
+                }
+              }); // end of G.findLinks ...
+            } // end of if
+          }); // end of appNode...
+        } // end of if
+      }); // end of Promise
+    }); // end of `checkDelApp`
+  }); // end of "cope/app"
+
+  M.createModel('cope/post', model => {
+    model.method('addPost', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        model.checkAddPost(obj, userData).then(valid => {
+          M.model('cope/post').createNode().then(nodeId => {
+
+            let postNode = M.model('cope/post').node(nodeId);
+            postNode.val({ 
+              title: valid.title,
+              postId: nodeId.slice(2, 8) + (Math.floor(Math.random() * 10000))
+            })
+              .link('app', valid.appNodeId)
+              .link('postCreator', valid.copeUserNodeId)
+              .next(() => {
+                resolve(postNode.snap.value());
+              });
+          });
+        }); // end of checkAddPost
+      }); // end of Promise
+    }); // end of `addPost`
+
+    model.method('updatePost', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        model.checkUpdatePost(obj, userData).then(valid => {
+          let postNode = model.node(valid.query);
+          let idx = valid.idx;
+          postNode.fetchData().next(() => {
+            if (postNode.nodeId()) { // post was found
+              let postValue = postNode.snap.value();
+              debug('postValue', postValue);
+              let postContent = JSON.parse(postValue.content) || []
+              // postContent = [ <elem> ]
+              // <elem> = {
+              //   header: <String>,
+              //   text: <String>, 
+              //   ( linkURL: <String>
+              //     || imgsrc: <String>
+              //     || vidsrc: <String>
+              //     || audsrc: <String>
+              //     || itemNodeId: <String>
+              //     || postNodeId: <String> )
+              // }
+              switch (valid.cmd) {
+                case 'move':
+                  let moveTo = valid.moveTo;
+                  if (moveTo >= 0 
+                    && moveTo < postContent.length) {
+                    let elem = postContent[idx];
+                    let a = postContent.slice(0, idx);
+                    let b = postContent.slice(idx + 1);
+                    let tmp = a.concat(b);
+                    a = tmp.slice(0, moveTo);
+                    b = tmp.slice(moveTo);
+                    postContent = a.concat(valid.elem).concat(b);
+                  }
+                  break;
+                case 'update':
+                  postContent[idx] = valid.elem;
+                  break;
+                default: // valid.cmd == 'insert'
+                  let a = postContent.slice(0, idx);
+                  let b = postContent.slice(idx);
+                  postContent = a.concat(valid.elem).concat(b);
+              }
+
+              postContent = JSON.stringify(postContent);
+              debug(postContent);
+              // How to store an array in MongoDB
+              // TBD Stringify JSON
+              postNode.val({ content: postContent })
+                .next(() => {
+                  resolve(postNode.snap.value());
+              });
+            }
+          });
+        }); // end of checkUpdatePost
+      }); // end of Promise
+    }); // end of `updatePost`
+
+    model.method('checkAddPost', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        let copeUserNodeId = userData 
+          && userData.copeUserData 
+          && userData.copeUserData.nodeId;
+        if (copeUserNodeId) { // require signed-in Cope user
+          let appNode = M.model('cope/app').node({ appId: obj.appId });
+          appNode.fetchData().next(() => {
+            if (appNode.nodeId()) {
+              let appNodeId = appNode.nodeId();
+              resolve({
+                copeUserNodeId: copeUserNodeId,
+                appNodeId: appNodeId,
+                title: (typeof (obj && obj.title) == 'string') 
+                  ? obj.title : 'Untitled'
+              });
+            }
+          });
+        }
+      }); // end of Promise
+    }); // end of `checkAddPost`
+
+    model.method('checkUpdatePost', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        valid = {};
+
+        let copeUserNodeId = userData 
+          && userData.copeUserData 
+          && userData.copeUserData.nodeId
+          || null;
+        if (!copeUserNodeId) {
+          reject('[ERR] Require signed-in Cope user.');
+          return;
+        } else {
+          valid.copeUserNodeId = copeUserNodeId;
+        }
+        
+        let updateAt = parseInt(obj.updateAt, 10) || null; 
+        let insertAt = parseInt(obj.insertAt, 10) || null;
+        let idx = parseInt(obj.idx, 10) || null;
+        let moveTo = parseInt(obj.moveTo, 10) || null;
+
+        if (!isNaN(updateAt)) {
+          valid.cmd = 'update';
+          valid.idx = updateAt;
+        } else if (!isNaN(insertAt)) {
+          valid.cmd = 'insert';
+          valid.idx = insertAt;
+        } else if (!isNaN(idx) && !isNaN(moveTo)) {
+          valid.cmd = 'move';
+          valid.idx = idx;
+          valid.moveTo = moveTo;
+          resolve(valid);
+          return;
+        } else  {
+          reject('[ERR] checkUpdatePost: invalid input', obj);
+        }
+
+        if (typeof obj.postId == 'string') {
+          valid.query = {};
+          valid.query.postId = obj.postId;
+        } else {
+          reject('[ERR] checkUpdatePost: invalid input that found no `postId`', obj);
+          return;
+        }
+
+        // Deal with elem to update
+        let elem = {};
+        elem.text = (typeof obj.text == 'string')
+          ? obj.text 
+          : '';
+        elem.header = (typeof obj.header == 'string')
+          ? obj.header
+          : '';
+        elem.linkURL = (typeof obj.linkURL == 'string')
+          ? obj.linkURL
+          : '';
+        
+        if (typeof obj.imgsrc == 'string') {
+          elem.imgsrc = obj.imgsrc;
+        } else if (typeof obj.vidsrc == 'string') {
+          elem.vidsrc = obj.vidsrc;
+        } else if (typeof obj.audsrc == 'string') {
+          elem.audsrc = obj.audsrc;
+        }
+
+        if (obj.itemId) {
+          let itemNode = M.model('cope/item').node({ itemId: obj.itemId });
+          itemNode.fetchData().next(() => {
+            if (itemNode.nodeId()) {
+              elem.itemNodeId = itemNode.nodeId();
+              valid.elem = elem; 
+              resolve(valid);
+            }
+          });
+        } else if (obj.postId) {
+          let postNode = M.model('cope/post').node({ postId: obj.postId });
+          postNode.fetchData().next(() => {
+            if (postNode.nodeId()) {
+              elem.postNodeId = postNode.nodeId();
+              valid.elem = elem; 
+              resolve(valid);
+            }
+          });
+        } else {
+          valid.elem = elem;
+          resolve(valid);
+        }
+        return;
+      }); // end of Promise
+    }); // end of `checkUpdatePost`
+  }); // end of "cope/post"
+  return false;
+}();
+
 // +CopeUsers
 // +CopeApps
 //   app
@@ -21,6 +513,7 @@ let debug = require('debug')('cope.site:cope-models');
 // 2. Then use M's API to create or modify the node
 // 3. Call resolve or reject with results
 
+/* ---------------------------------------
 let makeModel = function(modelName) {
   let funcs = {};
 
@@ -78,6 +571,20 @@ let makeModel = function(modelName) {
     model.method('set', (obj, userData) => {
       return new Promise((resolve, reject) => {
         model.valid('set', obj, userData).then(validObj => {
+          model.node(obj.nodeId || obj.filter)
+            .newVal(obj.value).next(() => {
+              resolve({ ok: true });
+            });
+        }).catch(err => {
+          reject(err);
+        });
+        // end of valid
+      }); // end of Promise
+    }); // end of <model>.set
+
+    model.method('update', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        model.valid('update', obj, userData).then(validObj => {
           model.node(obj.nodeId || obj.filter)
             .val(obj.value).next(() => {
               resolve({ ok: true });
@@ -148,15 +655,16 @@ let makeModel = function(modelName) {
 }; // end of makeModel
 
 module.exports = function() {
-  makeModel('copeUser');
-  makeModel('copeApp');
-  makeModel('copeApp/member');
-  makeModel('copeApp/group');
-  makeModel('copeApp/post');
-  makeModel('copeApp/item');
-  makeModel('copeApp/req');
+  makeModel('cope/user');
+  makeModel('cope/app');
+  makeModel('cope/member');
+  makeModel('cope/group');
+  makeModel('cope/post');
+  makeModel('cope/item');
+  makeModel('cope/req');
 
-  M.model('copeUser').setValid('add', obj => {
+  // *** cope/user ***
+  M.model('cope/user').setValid('add', obj => {
     return new Promise((resolve, reject) => {
       let email = obj.email;
       let pwd = obj.pwd;
@@ -172,7 +680,17 @@ module.exports = function() {
     });
   }); // end of validation of copeUsers.add
 
-  M.model('copeApp').setValid('add', obj => {
+  M.model('cope/user').method('signIn', obj => {
+    let userNode = M.model('cope/user').node(obj);
+    userNode.val({
+      'signedIn': true
+    }).fetchData().then(() => {
+      
+    });
+  }); // end of validation of copeUsers.profile
+
+  // *** cope/app ***
+  M.model('cope/app').setValid('add', obj => {
     return new Promise((resolve, reject) => {
       let appId = obj.appId;
       let ownerId = obj.ownerId;          
@@ -197,6 +715,5 @@ module.exports = function() {
       }); // end of checkNode
     }); // end of Promise
   }); // end of validation of copeApps.add
+  ----------------------- */
 
-  return false;
-}();

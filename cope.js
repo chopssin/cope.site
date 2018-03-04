@@ -356,11 +356,12 @@ module.exports = function() {
               });
             });
           }); // end of queue.add
-        } else { // fetch data from db
-          queue.add(() => {
-            getData(() => { queue.next(); }); // update local `nodeData`
-          }); // end of queue.add
-        }
+        } 
+        //else { // fetch data from db
+        //  queue.add(() => {
+        //    getData(() => { queue.next(); }); // update local `nodeData`
+        //  }); // end of queue.add
+        //}
         return nodeAPI;
       }; // end of nodeAPI.newVal
 
@@ -414,7 +415,7 @@ module.exports = function() {
                   }
                   
                   // Remove related links
-                  cope.G.removeLinks('nodeId').catch(err => {
+                  cope.G.removeLinks(id).catch(err => {
                     error('node.del', err);
                   })
 
@@ -462,7 +463,7 @@ module.exports = function() {
                 }); // end of .. findOne ..
               }); // end of .. useMongo ..
             } else {
-              error('node.link', obj);
+              debug('[ERR] node.link: nodeId, linkName, target', id, linkName, targetNodeId);
             } // end of else
           }); // end of checkId
         }); // end of queue.add
