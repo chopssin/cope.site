@@ -342,9 +342,10 @@ module.exports = function() {
               }
 
               let idx = valid.idx;
-              if (isNaN(idx)) { 
+              if (isNaN(idx) || idx > postContent.length) { 
                 idx = postContent.length;
               }
+              if (idx < 0) { idx = 0; }
               // postContent = [ <elem> ]
               // <elem> = {
               //   header: <String>,
@@ -367,7 +368,7 @@ module.exports = function() {
                     let tmp = a.concat(b);
                     a = tmp.slice(0, moveTo);
                     b = tmp.slice(moveTo);
-                    postContent = a.concat(valid.elem).concat(b);
+                    postContent = a.concat(elem).concat(b);
                   }
                   break;
                 case 'update':
@@ -378,6 +379,8 @@ module.exports = function() {
                   let b = postContent.slice(idx);
                   postContent = a.concat(valid.elem).concat(b);
               }
+
+              debug('-------->', postContent);
 
               postContent = JSON.stringify(postContent);
               // How to store an array in MongoDB
@@ -419,6 +422,13 @@ module.exports = function() {
 
     model.method('checkUpdatePost', (obj, userData) => {
       debug('checkUpdatePost', obj);
+      // { 
+      //   header?, text?, linkURL?, 
+      //   (imgsrc | vidsrc | audsrc)?,
+      //   insertedItemId?, 
+      //   insertedPostId?,
+      //   postId -> for query
+      // }
       return new Promise((resolve, reject) => {
         valid = {};
 
@@ -437,7 +447,6 @@ module.exports = function() {
         let insertAt = parseInt(obj.insertAt, 10);
         let idx = parseInt(obj.idx, 10);
         let moveTo = parseInt(obj.moveTo, 10);
-        debug('\n\nNUM\n\n', updateAt, insertAt, idx, moveTo);
 
         if (typeof obj.postId == 'string') {
           valid.query = {};
@@ -481,7 +490,7 @@ module.exports = function() {
           elem.audsrc = obj.audsrc;
         }
 
-        if (obj.itemId) {
+        if (obj.insertedItemId) {
           let itemNode = M.model('cope/item').node({ itemId: obj.itemId });
           itemNode.fetchData().next(() => {
             if (itemNode.nodeId()) {
@@ -490,8 +499,8 @@ module.exports = function() {
               resolve(valid);
             }
           });
-        } else if (obj.postId) {
-          let postNode = M.model('cope/post').node({ postId: obj.postId });
+        } else if (obj.insertedPostId) {
+          let postNode = M.model('cope/post').node({ postId: obj.insertedPostId });
           postNode.fetchData().next(() => {
             if (postNode.nodeId()) {
               elem.postNodeId = postNode.nodeId();

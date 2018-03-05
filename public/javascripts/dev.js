@@ -98,7 +98,7 @@ test(snap => {
   send('/post/update', {
     postId: snap.myPostId,
     insertAt: 0,
-    header: '第一段',
+    header: '第二段',
     text: '這裡是漢人與荷蘭人的古代戰場'
   }).then(res => {
     next(snap);
@@ -118,18 +118,9 @@ test(snap => {
 test(snap => {
   send('/post/update', {
     postId: snap.myPostId,
-    updateAt: 0,
-    header: '第一段'
-  }).then(res => {
-    next(snap);
-  });
-});
-
-test(snap => {
-  send('/post/update', {
-    postId: snap.myPostId,
-    idx: 1, 
-    header: '第二段'
+    updateAt: 0, 
+    header: '第一段',
+    text: '一位大將險些埋沒在歷史之河'
   }).then(res => {
     // TBD: next(snap);
   });
