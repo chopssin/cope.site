@@ -122,12 +122,12 @@ test(snap => {
     header: '第一段',
     text: '一位大將險些埋沒在歷史之河'
   }).then(res => {
-    // TBD: next(snap);
+    next(snap);
   });
 });
 
 test(snap => {
-  send('/app/post/del', {
+  send('/post/del', {
     postId: snap.myPostId
   }).then(res => {
     next(snap);

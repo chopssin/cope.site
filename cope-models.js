@@ -98,8 +98,8 @@ module.exports = function() {
             let newUserNode = model.node(nodeId);
             valid.userId = nodeId.slice(2, 7);
 
-            debug('New account', nodeId);
-            debug('New account input', valid);
+            //debug('New account', nodeId);
+            //debug('New account input', valid);
             newUserNode.val(valid).next(() => {
               if (newUserNode.nodeId() && newUserNode.snap.data()) {
                 resolve(newUserNode.snap.data());
@@ -256,7 +256,6 @@ module.exports = function() {
           ? obj.appName 
           : 'Untitled App';
         if (userData && userData.copeUserData) {
-          debug('checkAddApp', userData);
           valid.ownerNodeId = userData.copeUserData.nodeId;
           resolve(valid);
           return;
@@ -325,20 +324,18 @@ module.exports = function() {
       return new Promise((resolve, reject) => {
         model.checkUpdatePost(obj, userData).then(valid => {
 
-          debug('valid', valid);
-
           let postNode = model.node(valid.query);
           postNode.fetchData().next(() => {
             if (postNode.nodeId()) { // post was found
               let postValue = postNode.snap.value();
-              debug('updatePost: postValue', postValue);
+              //debug('updatePost: postValue', postValue);
 
               let postContent = [];
               try {
                 postContent = JSON.parse(postValue && postValue.content);
               } catch (err) {
                 postContent = [];
-                debug('updatePost', err);
+                //debug('updatePost', err);
               }
 
               let idx = valid.idx;
@@ -379,15 +376,12 @@ module.exports = function() {
                   let b = postContent.slice(idx);
                   postContent = a.concat(valid.elem).concat(b);
               }
-
-              debug('-------->', postContent);
-
               postContent = JSON.stringify(postContent);
               // How to store an array in MongoDB
               // TBD Stringify JSON
               postNode.val({ content: postContent })
                 .next(() => {
-                  debug('updated', postNode.snap.data());
+                  //debug('updated', postNode.snap.data());
                   let postValue = postNode.snap.value();
                   postValue.content = JSON.parse(postValue.content);
                   resolve(postValue);
@@ -397,6 +391,16 @@ module.exports = function() {
         }); // end of checkUpdatePost
       }); // end of Promise
     }); // end of `updatePost`
+
+    model.method('delPost', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        model.checkDelPost(obj, userData).then(valid => {
+          model.node(valid.postNodeId).del().then(() => {
+            resolve('Post deleted');
+          });
+        });
+      });
+    }); // end of `delPost`
 
     model.method('checkAddPost', (obj, userData) => {
       return new Promise((resolve, reject) => {
@@ -421,7 +425,6 @@ module.exports = function() {
     }); // end of `checkAddPost`
 
     model.method('checkUpdatePost', (obj, userData) => {
-      debug('checkUpdatePost', obj);
       // { 
       //   header?, text?, linkURL?, 
       //   (imgsrc | vidsrc | audsrc)?,
@@ -515,6 +518,34 @@ module.exports = function() {
         return;
       }); // end of Promise
     }); // end of `checkUpdatePost`
+
+    model.method('checkDelPost', (obj, userData) => {
+      let copeUserNodeId = userData 
+        && userData.copeUserData 
+        && userData.copeUserData.nodeId;
+      let postId = obj.postId;
+      let postNode = M.model('cope/post').node({ 
+        postId: postId
+      });
+
+      return new Promise((resolve, reject) => {
+        postNode.fetchData().next(() => {
+          let postNodeId = postNode.nodeId();
+          if (postNodeId && copeUserNodeId) {
+            G.findLinks({
+              '$name': 'postCreator',
+              '$source': postNodeId,
+              '$target': copeUserNodeId
+            }).then(links => {
+              debug('LINKS', links);
+              if (links.length === 1) { // the user is verified as the post's creator
+                resolve({ postNodeId: postNodeId });
+              }
+            });
+          }
+        });
+      }); // end of Promise
+    }); // end of `checkDelPost`
   }); // end of "cope/post"
   return false;
 }();
