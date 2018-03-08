@@ -77,7 +77,7 @@ setAPI('post', '/app/update', 'cope/app', 'updateApp'); // TBD
 setAPI('post', '/post/add', 'cope/post', 'addPost');
 setAPI('post', '/post/del', 'cope/post', 'delPost');
 setAPI('post', '/post/get', 'cope/post', 'getPost');
-setAPI('post', '/post/all', 'cope/post', 'getAllPosts'); // TBD
+setAPI('post', '/post/all', 'cope/post', 'getPostIds'); // TBD
 setAPI('post', '/post/update', 'cope/post', 'updatePost');
 
 // Define APIs which requires more flexible and custom design

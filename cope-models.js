@@ -437,6 +437,30 @@ module.exports = function() {
       });
     }); // end of `getPost`
 
+    model.method('getPostIds', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        model.checkGetPostIds(obj, userData).then(valid => {
+          if (valid.linksQuery) {
+            G.findLinks(valid.linksQuery).then(links => {
+              G.findNodes(links.map(link => {
+                return link.source;
+              })).then(nodesData => {
+                let postIds = [];
+                debug('nodesData', nodesData);
+                for (let nodeId in nodesData) {
+                  let data = nodesData[nodeId];
+                  if (data && data.value && data.value.postId) {
+                    postIds = postIds.concat(data.value.postId);
+                  }
+                }
+                resolve(postIds);
+              }); // end of G.findNodes ...
+            }); // end of model.findLinks ...
+          }
+        }); // end of model.checkGetPostIds ...
+      }); // end of Promise
+    }); // end of `getAllPostIds`
+
     model.method('checkAddPost', (obj, userData) => {
       return new Promise((resolve, reject) => {
         let copeUserNodeId = userData 
@@ -598,7 +622,31 @@ module.exports = function() {
         }
       }); // end of Promise
     }); // end of `checkGetPost`
+
+    model.method('checkGetPostIds', (obj, userData) => {
+      let nodesQuery = {};
+      let linksQuery = {};
+      // TBD: validate the query object
+
+      // My posts only
+      linksQuery = {};
+      linksQuery['$name'] = 'postCreator';
+      linksQuery['$target'] = userData
+        && userData.copeUserData 
+        && userData.copeUserData.nodeId;
+
+      return new Promise((resolve, reject) => {
+        if (linksQuery['$target']) {
+          resolve({
+            linksQuery: linksQuery
+          });
+        } else {
+          reject('Require signed-in Cope user');
+        }
+      }); // end of Promise
+    }); // end of `checkGetPostIds`
   }); // end of "cope/post"
+
   return false;
 }();
 

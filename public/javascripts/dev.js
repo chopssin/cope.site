@@ -158,6 +158,12 @@ test(snap => {
 });
 
 test(snap => {
+  send('/post/all').then(res => {
+    next(snap);
+  });
+});
+
+test(snap => {
   send('/post/del', {
     postId: snap.myPostId
   }).then(res => {
