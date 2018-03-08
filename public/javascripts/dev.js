@@ -126,6 +126,37 @@ test(snap => {
   });
 });
 
+/*
+test(snap => {
+  send('/post/all').then(res => {
+    next(snap);
+  });
+});
+*/
+
+test(snap => {
+  send('/account/signout').then(res => {
+    next(snap);
+  });
+});
+
+test(snap => {
+  send('/post/get', {
+    postId: snap.myPostId
+  }).then(res => {
+    next(snap);
+  });
+});
+
+test(snap => {
+  send('/account/signin', {
+    email: 'test@xmail.com',
+    pwd: 'test'
+  }).then(res => {
+    next(snap);
+  });
+});
+
 test(snap => {
   send('/post/del', {
     postId: snap.myPostId

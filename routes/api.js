@@ -71,12 +71,13 @@ setAPI('post', '/profile/get', 'cope/user', 'getProfile');
 
 setAPI('post', '/app/add', 'cope/app', 'addApp');
 setAPI('post', '/app/del', 'cope/app', 'delApp');
-setAPI('post', '/app/get', 'cope/app', 'getApp');
-setAPI('post', '/app/update', 'cope/app', 'updateApp');
+setAPI('post', '/app/get', 'cope/app', 'getApp'); // TBD
+setAPI('post', '/app/update', 'cope/app', 'updateApp'); // TBD
 
 setAPI('post', '/post/add', 'cope/post', 'addPost');
 setAPI('post', '/post/del', 'cope/post', 'delPost');
 setAPI('post', '/post/get', 'cope/post', 'getPost');
+setAPI('post', '/post/all', 'cope/post', 'getAllPosts'); // TBD
 setAPI('post', '/post/update', 'cope/post', 'updatePost');
 
 // Define APIs which requires more flexible and custom design

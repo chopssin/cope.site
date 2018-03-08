@@ -402,6 +402,41 @@ module.exports = function() {
       });
     }); // end of `delPost`
 
+    model.method('getPost', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        model.checkGetPost(obj, userData).then(valid => {
+          let postNode = model.node(valid.query);
+          postNode.fetchData().fetchLinks().next(() => {
+            if (postNode.nodeId()) {
+              let postData = postNode.snap.data();
+              let links = postData && postData.links;
+              let isCreator = false;
+              links.map(x => {
+                if (x.name == 'postCreator' 
+                  && x.target == valid.copeUserNodeId) {
+                  isCreator = true;
+                }
+              });
+              if (!postData) {
+                resolve('Post not found');
+              } else {
+                if (isCreator) {
+                  resolve(postData);
+                } else {
+                  resolve({
+                    title: postData.value && postData.value.title,
+                    content: postData.value && postData.value.content,
+                    createdAt: postData.createdAt,
+                    updatedAt: postData.updatedAt
+                  });
+                }
+              }
+            }
+          });
+        });
+      });
+    }); // end of `getPost`
+
     model.method('checkAddPost', (obj, userData) => {
       return new Promise((resolve, reject) => {
         let copeUserNodeId = userData 
@@ -424,6 +459,7 @@ module.exports = function() {
       }); // end of Promise
     }); // end of `checkAddPost`
 
+    // TBD: postScope
     model.method('checkUpdatePost', (obj, userData) => {
       // { 
       //   header?, text?, linkURL?, 
@@ -537,7 +573,7 @@ module.exports = function() {
               '$source': postNodeId,
               '$target': copeUserNodeId
             }).then(links => {
-              debug('LINKS', links);
+              //debug('LINKS', links);
               if (links.length === 1) { // the user is verified as the post's creator
                 resolve({ postNodeId: postNodeId });
               }
@@ -546,6 +582,22 @@ module.exports = function() {
         });
       }); // end of Promise
     }); // end of `checkDelPost`
+
+    model.method('checkGetPost', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        let postId = obj.postId;
+        let query = {};
+        if (typeof postId == 'string') {
+          query.postId = postId;
+          resolve({ 
+            query: query, 
+            copeUserNodeId: userData 
+              && userData.copeUserData 
+              && userData.copeUserData.nodeId
+          });
+        }
+      }); // end of Promise
+    }); // end of `checkGetPost`
   }); // end of "cope/post"
   return false;
 }();
