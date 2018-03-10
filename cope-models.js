@@ -628,7 +628,7 @@ module.exports = function() {
       let linksQuery = {};
       // TBD: validate the query object
 
-      // My posts only
+      // "Show my posts" by default
       linksQuery = {};
       linksQuery['$name'] = 'postCreator';
       linksQuery['$target'] = userData
