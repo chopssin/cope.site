@@ -411,6 +411,15 @@ module.exports = function() {
               let postData = postNode.snap.data();
               let links = postData && postData.links;
               let isCreator = false;
+
+              if (postData && postData.value && postData.value.content) {
+                try {
+                  postData.value.content = JSON.parse(postData.value.content);
+                } catch (err) {
+                  // TBD
+                }
+              }
+
               links.map(x => {
                 if (x.name == 'postCreator' 
                   && x.target == valid.copeUserNodeId) {
