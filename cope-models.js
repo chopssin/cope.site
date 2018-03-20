@@ -231,7 +231,7 @@ module.exports = function() {
             newApp.val({
               appId: appId,
               appName: valid.appName
-            }).link('owner', valid.ownerNodeId).next(() => {
+            }).link('appOwner', valid.ownerNodeId).next(() => {
               resolve(newApp.snap.value());
             });
           });
@@ -248,6 +248,59 @@ module.exports = function() {
         }); // end of checkDelApp
       }); // end of Promise
     }); // end of `delApp`
+
+    model.method('getApp', (appId, userData) => {
+      return new Promise((resolve, reject) => {
+        let appNode = M.model('cope/app').node(validQuery);
+        appNode.fetchData().next(() => {
+          if (appNode.nodeId()) {
+            resolve(appNode.snap.data());
+          }
+        });
+      });
+    }); // end of `getApp`
+
+    model.method('getAllApps', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        model.checkGetAllApps(obj, userData).then(validQuery => {
+          debug(validQuery);
+          if (validQuery.appId) {
+            model.getApp(validQuery.appId).then(appData => {
+              resolve(appData);
+            }).catch(err => {
+              debug(err);
+              resolve({});
+            });
+          } else if (typeof validQuery == 'object' 
+            && Object.keys(validQuery).length > 0) {
+            M.model('cope/app').findNodes(validQuery).then(appsDataObj => {
+              resolve(appsDataObj);
+            }).catch(err => {
+              debug(err);
+              resolve({});
+            })
+          } else {
+            // Get my own apps
+            let myCopeUserNodeId = userData 
+              && userData.copeUserData
+              && userData.copeUserData.nodeId;
+            if (myCopeUserNodeId) {
+              G.findLinks({ 
+                '$name': 'appOwner',
+                '$target': myCopeUserNodeId 
+              }).then(links => {
+                G.findNodes(links.map(link => link.source)).then(appsDataObj => {
+                  resolve(appsDataObj);
+                });
+              }).catch(err => {
+                debug(err);
+                resolve({});
+              });
+            }
+          }
+        });
+      });
+    }); // end of `getAllApps`
 
     model.method('checkAddApp', (obj, userData) => {
       return new Promise((resolve, reject) => {
@@ -282,7 +335,7 @@ module.exports = function() {
                 debug(links);
                 let isOwner = false;
                 links.map(link => {
-                  if (link.name == 'owner' 
+                  if (link.name == 'appOwner' 
                     && link.target == copeUserNodeId
                     && link.source == appNodeId) {
                     isOwner = true;
@@ -297,6 +350,20 @@ module.exports = function() {
         } // end of if
       }); // end of Promise
     }); // end of `checkDelApp`
+
+    model.method('checkGetApp', (appId, userData) => {
+      return new Promise((resolve, reject) => {
+        if (typeof appId == 'string') {
+          resolve(appId);
+        }
+      });
+    }); // end of `checkGetApp`
+    
+    model.method('checkGetAllApps', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        resolve(obj);
+      });
+    }); // end of `checkGetAllApps`
   }); // end of "cope/app"
 
   M.createModel('cope/post', model => {
@@ -417,6 +484,8 @@ module.exports = function() {
                   postData.value.content = JSON.parse(postData.value.content);
                 } catch (err) {
                   // TBD
+                  reject(err);
+                  return;
                 }
               }
 
@@ -475,7 +544,8 @@ module.exports = function() {
         let copeUserNodeId = userData 
           && userData.copeUserData 
           && userData.copeUserData.nodeId;
-        if (copeUserNodeId) { // require signed-in Cope user
+        let appId = obj && obj.appId;
+        if (copeUserNodeId && appId) { // require signed-in Cope user
           let appNode = M.model('cope/app').node({ appId: obj.appId });
           appNode.fetchData().next(() => {
             if (appNode.nodeId()) {

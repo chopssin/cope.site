@@ -71,7 +71,8 @@ setAPI('post', '/profile/get', 'cope/user', 'getProfile');
 
 setAPI('post', '/app/add', 'cope/app', 'addApp');
 setAPI('post', '/app/del', 'cope/app', 'delApp');
-setAPI('post', '/app/get', 'cope/app', 'getApp'); // TBD
+setAPI('post', '/app/get', 'cope/app', 'getAllApps'); // TBD
+//setAPI('post', '/app/all', 'cope/app', 'getAllApps'); // TBD
 setAPI('post', '/app/update', 'cope/app', 'updateApp'); // TBD
 
 setAPI('post', '/post/add', 'cope/post', 'addPost');
@@ -81,12 +82,20 @@ setAPI('post', '/post/all', 'cope/post', 'getPostIds'); // TBD
 setAPI('post', '/post/update', 'cope/post', 'updatePost');
 
 // Define APIs which requires more flexible and custom design
+router.post('/account/me', function(req, res, next) {
+  if (req.session && req.session.copeUserData) {
+    res.send({ ok: true, data: req.session.copeUserData });
+  } else {
+    res.send({ ok: false });
+  }
+});
+
 router.post('/account/signin', function(req, res, next) {
   //apis.set('post', '/u/signin', 'users', 'signIn');
   M.model('cope/user').signIn(req.body).then(data => {
     if (typeof req.session == 'object' && data) {
       req.session.copeUserData = data;
-      res.send({ ok: true });
+      res.send({ ok: true, data: req.session.copeUserData });
     } else {
       debug('[ERR] failed to access req.session');
       res.send({ ok: false });

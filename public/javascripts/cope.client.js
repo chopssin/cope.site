@@ -219,12 +219,13 @@ let newVu = function(obj, render) {
   let vuAPI = {};
   let init = null;
   let domBuilder = null;
-  let methods = {};
   let viewData = obj && obj.data || {}; // private data store for this view
   let viewDOM = [];
   let viewHTML = '';
   let viewId = new Date().getTime().toString(36) 
     + Math.floor(Math.random() * 10000).toString(36);
+
+  vuAPI.id = viewId;
   
   vuAPI.sel = function(_path) {
     let root = '[data-vuid="' + viewId + '"]';
@@ -266,11 +267,11 @@ let newVu = function(obj, render) {
   }; // end of vuAPI.init
 
   vuAPI.method = function(name, fn) {
-    if (methods[name]) {
+    if (vuAPI[name]) {
       return console.error('vu.method(name): name "' + name + '" already taken');
     }
     if (!vuAPI[name] && typeof fn == 'function') {
-      methods[name] = fn;
+      vuAPI[name] = fn;
     }
   };
 
@@ -347,12 +348,41 @@ let newVu = function(obj, render) {
 }; // end of newVu
 
 let newDS = function() {
-  let store = {};
+  let data = {};
   let registry = {};
   let dsAPI = {};
-  dsAPI.onChange = function() {};
-  dsAPI.set = function() {};
-  dsAPI.get = function() {};
+  dsAPI.onChange = function(name, fn) {
+    if (typeof name != 'string' 
+      || typeof fn != 'function') {
+      return;
+    }
+    if (!registry[name]) {
+      registry[name] = [];
+    }
+    registry[name] = registry[name].concat(fn);
+  };
+
+  dsAPI.set = function(a, b) {
+    if (typeof a == 'string') {
+      data[a] = b;
+      if (registry[a] && registry[a].length) {
+        registry[a].map(fn => {
+          fn(b);
+        });
+      }
+    } else {
+      console.error('dsAPI.set(a, b): invalid inputs', a, b);
+    } 
+  };
+
+  dsAPI.get = function(a) {
+    if (typeof a == 'string') {
+      return data[a] || null;
+    } else {
+      return data;
+    }
+  };
+
   return dsAPI;
 }; // end of newDS
 
@@ -379,6 +409,8 @@ cope.views = function() {
   let classes = {};
   let ds = newDS();
   
+  V.dom = domToHtml;
+  
   V.dataStore = function() {
     return ds;
   };
@@ -398,6 +430,7 @@ cope.views = function() {
     let classInitFunc = classes[className];
     return newVu(obj, classInitFunc);
   }; // end of V.class
+
   return V;
 };
 
