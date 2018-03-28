@@ -2,90 +2,6 @@ let G = require('./cope').G;
 let M = require('./cope').M;
 let debug = require('debug')('cope.site:cope-models');
 
-/*
-let checks = {};
-let setCheck = function(name, cb) { // cb should return a Promise
-  if (checks[name]) {
-    debug('[Warning] overwritten check function `' + name + '`');
-  }
-  checks[name] = cb;
-};
-let check = function(name, obj, userData) {
-  if (checks[name]) {
-    return checks[name](obj, userData);
-  } else {
-    return new Promise((resolve, reject) => {
-      // empty function
-      resolve(obj);
-    })
-  }
-};
-
-setCheck('cope/user.addAccount', (obj, userData) => {
-      return new Promise((resolve, reject) => {
-        let email = obj.email;
-        let pwd = obj.pwd;
-        let confirmedPwd = obj.confirmedPwd;
-        if (pwd === confirmedPwd) {
-          debug('OKOKOK? addAccount');
-          let u = M.model('cope/user').node({
-            email: email,
-            pwd: pwd
-          });
-          u.next(() => {
-            if (!u.nodeId()) { // node not existed
-              resolve({
-                email: email, pwd: pwd
-              });
-            }
-          });
-        }
-      });
-});
-
-setCheck('cope/user.delAccount', (obj, userData) => {
-      return new Promise((resolve, reject) => {
-        let email = obj.email;
-        let pwd = obj.pwd;
-        let confirmedPwd = obj.confirmedPwd;
-          debug('OKOKOK? delAccount');
-        if (pwd === confirmedPwd) {
-          let u = M.model('cope/user').node({
-            email: email,
-            pwd: pwd
-          });
-          u.next(() => {
-            if (u.nodeId()) { // node existed
-              resolve({
-                nodeId: u.nodeId()
-              });
-            }
-          });
-        }
-      });
-});
-
-setCheck('cope/user.getProfile', (obj, userData) => {
-    return new Promise((resolve, reject) => {
-      let query = null;
-      if (typeof obj.email == 'string') {
-        query = { email: obj.email };
-      } else if (typeof obj.userId == 'string') {
-        query = { userId: obj.userId };
-      } 
-
-      if (query) {
-        let u = M.model('cope/user').node(query);
-        u.fetchData().next(() => {
-          if (u.nodeId()) {
-            resolve(u.snap.value());
-          }
-        });
-      }
-    });
-});
-*/
-
 module.exports = function() {
 
   // "cope/user"
@@ -232,7 +148,7 @@ module.exports = function() {
               appId: appId,
               appName: valid.appName
             }).link('appOwner', valid.ownerNodeId).next(() => {
-              resolve(newApp.snap.value());
+              resolve(newApp.snap.data());
             });
           });
         }); // end of checkAddApp
@@ -380,7 +296,7 @@ module.exports = function() {
               .link('app', valid.appNodeId)
               .link('postCreator', valid.copeUserNodeId)
               .next(() => {
-                resolve(postNode.snap.value());
+                resolve(postNode.snap.data());
               });
           });
         }); // end of checkAddPost
@@ -390,72 +306,12 @@ module.exports = function() {
     model.method('updatePost', (obj, userData) => {
       return new Promise((resolve, reject) => {
         model.checkUpdatePost(obj, userData).then(valid => {
-
           let postNode = model.node(valid.query);
-          postNode.fetchData().next(() => {
-            if (postNode.nodeId()) { // post was found
-              let postValue = postNode.snap.value();
-              //debug('updatePost: postValue', postValue);
-
-              let postContent = [];
-              try {
-                postContent = JSON.parse(postValue && postValue.content);
-              } catch (err) {
-                postContent = [];
-                //debug('updatePost', err);
-              }
-
-              let idx = valid.idx;
-              if (isNaN(idx) || idx > postContent.length) { 
-                idx = postContent.length;
-              }
-              if (idx < 0) { idx = 0; }
-              // postContent = [ <elem> ]
-              // <elem> = {
-              //   header: <String>,
-              //   text: <String>, 
-              //   ( linkURL: <String>
-              //     || imgsrc: <String>
-              //     || vidsrc: <String>
-              //     || audsrc: <String>
-              //     || itemNodeId: <String>
-              //     || postNodeId: <String> )
-              // }
-              switch (valid.cmd) {
-                case 'move':
-                  let moveTo = valid.moveTo;
-                  if (moveTo >= 0 
-                    && moveTo < postContent.length) {
-                    let elem = postContent[idx];
-                    let a = postContent.slice(0, idx);
-                    let b = postContent.slice(idx + 1);
-                    let tmp = a.concat(b);
-                    a = tmp.slice(0, moveTo);
-                    b = tmp.slice(moveTo);
-                    postContent = a.concat(elem).concat(b);
-                  }
-                  break;
-                case 'update':
-                  postContent[idx] = valid.elem;
-                  break;
-                default: // valid.cmd == 'insert'
-                  let a = postContent.slice(0, idx);
-                  let b = postContent.slice(idx);
-                  postContent = a.concat(valid.elem).concat(b);
-              }
-              postContent = JSON.stringify(postContent);
-              // How to store an array in MongoDB
-              // TBD Stringify JSON
-              postNode.val({ content: postContent })
-                .next(() => {
-                  //debug('updated', postNode.snap.data());
-                  let postValue = postNode.snap.value();
-                  postValue.content = JSON.parse(postValue.content);
-                  resolve(postValue);
-              });
-            }
+          postNode.val(valid.updates).next(() => {
+            debug('updatePost RES', postNode.snap.data());
+            resolve(postNode.snap.data());
           });
-        }); // end of checkUpdatePost
+        });
       }); // end of Promise
     }); // end of `updatePost`
 
@@ -481,7 +337,9 @@ module.exports = function() {
 
               if (postData && postData.value && postData.value.content) {
                 try {
-                  postData.value.content = JSON.parse(postData.value.content);
+                  if (typeof postData.value.content != 'string') {
+                    postData.value.content = JSON.stringify(postData.value.content);
+                  }
                 } catch (err) {
                   // TBD
                   reject(err);
@@ -564,6 +422,61 @@ module.exports = function() {
 
     // TBD: postScope
     model.method('checkUpdatePost', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        let postNodeId = null;
+        let query = null;
+        let updates = null;
+        let copeUserNodeId = userData 
+          && userData.copeUserData 
+          && userData.copeUserData.nodeId
+          || null;
+
+        if (!obj || !obj.postId || !copeUserNodeId) {
+          return reject('Invalid query or failed to authenticate the user');
+        }
+
+        if (obj && (obj.content 
+                   || obj.title 
+                   || obj.subtitle)
+        ) {
+          updates = {};
+          if (typeof obj.content == 'string') {
+            updates.content = obj.content;
+          }
+          if (typeof obj.title == 'string') {
+            updates.title = obj.title;
+          }
+          if (typeof obj.subtitle == 'string') {
+            updates.subtitle = obj.subtitle;
+          }
+        }
+
+        if (!updates) {
+          return reject('Invalid updates');
+        }
+
+        let postNode = model.node({ postId: obj.postId });
+        postNode.fetchData().next(() => {
+          if (postNode.nodeId()) {
+            postNodeId = postNode.nodeId();
+            G.findLinks({
+              '$name': 'postCreator',
+              '$source': postNodeId
+            }).then(links => {
+              debug('dlaskjdlakjd', links, copeUserNodeId, updates);
+              if (links 
+                && links.length === 1
+                && links[0].target == copeUserNodeId) {
+                resolve({
+                  query: postNodeId,
+                  updates: updates
+                });
+              }
+            }); // end of G.findLinks ...
+          } // end of if
+        }); // end of postNode.fetchData ...
+      }); // end of Promise
+    }); // end of `checkUpdatePost`
       // { 
       //   header?, text?, linkURL?, 
       //   (imgsrc | vidsrc | audsrc)?,
@@ -571,6 +484,7 @@ module.exports = function() {
       //   insertedPostId?,
       //   postId -> for query
       // }
+      /*
       return new Promise((resolve, reject) => {
         valid = {};
 
@@ -657,6 +571,7 @@ module.exports = function() {
         return;
       }); // end of Promise
     }); // end of `checkUpdatePost`
+    */
 
     model.method('checkDelPost', (obj, userData) => {
       let copeUserNodeId = userData 

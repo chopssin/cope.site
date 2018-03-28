@@ -281,6 +281,11 @@ let newVu = function(obj, render) {
     } else if (typeof a == 'string') {
       viewData[a] = b;
     }
+    try {
+      vuAPI.$().data(viewData);
+    } catch (err) {
+      //console.warn(err);
+    }
     return;
   };
 

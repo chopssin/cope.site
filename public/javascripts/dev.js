@@ -17,25 +17,40 @@ let msg = function(res) {
     post.title = data.title || null;
     if (!Array.isArray(data.content)) {
       console.warn(data);
-      //try {
-       // data.content = JSON.parse(data.content) || [];
-      //} catch (err) {
-      //}
-      data.content = [];
+      try {
+        data.content = JSON.parse(data.content);
+      } catch (err) {
+        data.content = [];
+      }
     }
     post.content = data.content
       .map(p => {
         let para = {};
-        para.div = [
-          { 'h3[mt:16px; mb:8px]': p.header || '' }, 
-          { 'p[mt:0]': p.text || '' }
-        ]
+        if (p.link) {
+          para.div = [
+            [ 'a(href="' + p.link + '")', [
+              { 'h3': p.header || '' },
+              { 'p': p.text || '' }] 
+            ]
+          ];
+        } else if (p.imgsrc) {
+          para.div = [
+            [ 'img(src="' + p.imgsrc + '")' ],
+            { 'h3': p.header || '' },
+            { 'p': p.text || '' }
+          ]
+        } else {
+          para.div = [
+            { 'h3[mt:16px; mb:8px]': p.header || '' }, 
+            { 'p[mt:0]': p.text || '' }
+          ]
+        }
         return para;
       });
     console.log(post);
     return post;
   };
-  let post = makePost(res && res.data);
+  let post = makePost(res && res.data && res.data.value);
   if (post) {
     V.build('post', {
       sel: '#posts', 
@@ -164,44 +179,24 @@ test(snap => {
 });
 
 test(snap => {
+  let c = JSON.stringify([
+    { 
+      'text': 'Text goes here.',
+      'header': 'Text'
+    },
+    {
+      'header': 'Image',
+      'text': 'Image is cool.',
+      'imgsrc': 'https://fakeimg.pl/250x100/'
+    },
+    {
+      'text': 'This is a link.',
+      'link': 'http://www.comicbus.com/html/1725.html'
+    }
+  ]);
   send('/post/update', {
     postId: snap.myPostId,
-    text: '一位大將險些埋沒在歷史之河'
-  }).then(res => {
-    msg(res);
-    next(snap);
-  });
-});
-
-test(snap => {
-  send('/post/update', {
-    postId: snap.myPostId,
-    insertAt: 0,
-    header: '第二段',
-    text: '這裡是漢人與荷蘭人的古代戰場'
-  }).then(res => {
-    msg(res);
-    next(snap);
-  });
-});
-
-test(snap => {
-  send('/post/update', {
-    postId: snap.myPostId,
-    idx: 1,
-    moveTo: 0
-  }).then(res => {
-    msg(res);
-    next(snap);
-  });
-});
-
-test(snap => {
-  send('/post/update', {
-    postId: snap.myPostId,
-    updateAt: 0, 
-    header: '第一段',
-    text: '一位大將險些埋沒在歷史之河'
+    content: c
   }).then(res => {
     msg(res);
     next(snap);
