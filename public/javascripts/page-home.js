@@ -438,7 +438,7 @@ V.createClass('PostsSec', vu => {
           });
           
           postPreview.onClick(postId => {
-            V.build('Post', {
+            V.build('EditablePost', {
               sel: vu.sel('@postEditor'),
               data: {
                 postId: postId
@@ -521,9 +521,51 @@ V.createClass('PostPreview', vu => {
   }); // end of PostPreview.init
 }); // end of `PostPreview`
 
+V.createClass('EditablePost', vu => {
+  vu.dom(data => [
+    { 'div[w:100%]': [
+      { 'button@editBtn': 'Edit' }] 
+    },
+    { '@post[w:100%]': '' },
+    { '@edit[none;w:100%]': '' }
+  ]);
+
+  vu.method('render', () => {
+    vu.$('@editBtn').show();
+    vu.$('@edit').hide();
+    V.build('Post', {
+      sel: vu.sel('@post'),
+      data: {
+        postId: vu.get('postId')
+      }
+    });
+  }); // end of EditablePost.render
+
+  vu.method('edit', () => {
+    vu.$('@editBtn').hide();
+    vu.$('@edit').show();
+    V.build('PostEditor', {
+      sel: vu.sel('@post'),
+      data: {
+        postId: vu.get('postId')
+      }
+    }).done(() => {
+      vu.render();
+    });
+  }); // end of EditablePost.edit
+
+  vu.init(data => {
+    vu.render();
+
+    vu.$('@editBtn').on('click', evt => {
+      vu.edit();
+    });
+  });
+}); // end of `EditablePost`
+
 V.createClass('Post', vu => {
   vu.dom(data => [
-    { 'div[p:16px; bgColor:#fff]': [
+    { 'div[w:100%; max-width:600px; p:16px; bgColor:#fff]': [
       { 'h2@title': '' },
       { 'p@subtitle[fz:14px;color:#888]': '' },
       { '@info': '' },
@@ -549,6 +591,7 @@ V.createClass('Post', vu => {
   }); // end of Post.render
 
   vu.method('elmDOM', x => {
+    console.log('elmDOM', x);
     let innerDOM = { 'div': [] };
     if (x.header) {
       innerDOM.div = innerDOM.div.concat({ 'h4': x.header }); 
@@ -556,19 +599,41 @@ V.createClass('Post', vu => {
     if (x.text) {
       innerDOM.div = innerDOM.div.concat({ 'p': x.text }); 
     }
-    if (x.imgsrc) {
+    if (innerDOM.div.length < 1) {
+      innerDOM = '';
+    }
+    if (x.mediaArr) {
       innerDOM = {
         'div': [
-          ['img(src="' + x.imgsrc + '")'],
-          (innerDOM.div.length > 0) ? innerDOM : ''
+          vu.mediaDOM(x.mediaArr),
+          innerDOM
         ]
       };
-    }
+    } 
     if (x.link) {
-      innerDOM = ['a(href="' + x.link + '")', innerDOM];
+      innerDOM = ['a(href="' + x.link + '" target="_blank")', innerDOM || x.link];
     }
+    console.log(innerDOM);
     return innerDOM;
-  });
+  }); // end of Post.elmDOM
+
+  vu.method('mediaDOM', mediaArr => {
+    if (!Array.isArray(mediaArr)) {
+      return '';
+    }
+    let dom = { 'div': mediaArr.map(x => {
+      if (x.imgsrc) {
+        return ['img(src="' + x.imgsrc + '")[w:100%]'];
+      } else if (x.vidsrc) {
+        return ['div', 'Video: ' + x.vidsrc];
+      } else if (x.audsrc) {
+        return ['div', 'Audio: ' + x.audsrc];
+      } else {
+        return '';
+      }
+    }) };
+    return dom;
+  }); // end of Post.mediaDOM
 
   vu.init(data => {
     vu.render(); 
@@ -582,130 +647,63 @@ V.createClass('PostEditor', vu => {
       doneCb.apply(null, arguments);
     }
   };
-  let contentElmVus = {};
 
-  vu.dom(data => {
-    let titleElm = {};
-    let infoElm = {};
-    let contentElm = {};
-
-    let infoData = Array.isArray(data && data.info) 
-      ? data.info
-      : [];
-
-    let content = Array.isArray(data && data.content)
-      ? data.content
-      : [];
-
-    vu.set('infoData', infoData);
-    vu.set('content', content);
-
-    titleElm['div'] = [
-      { 'input(type="text" placeholder="Title")@title': '' },
-      { 'input(type="text" placeholder="Subtitle")@subtitle': '' }
-    ];
-
-    infoElm['@infoTable'] = infoData.map(x => {
-      return {
-        'div': [
-          { 'div': x.key },
-          { 'div': x.value }]
-      };
-    });
-
-    return [
+  vu.dom(data => [
+    { 'div': [ 
       { 'div@controls': [
         { '@ctl-d[inline-block; p:6px; bgColor:#44f]': 'Done' },
         { '@ctl-r[inline-block; p:6px; bgColor:#e00]': 'Remove this post' },
         { '@ctl-p[inline-block; p:6px; bgColor:#ddd]': 'Set publish time' },
         { '@ctl-a[inline-block; p:6px; bgColor:#ddd]': 'Add to store' }]
       },
-      titleElm,
+      { 'div': [
+        { 'input(type="text" placeholder="Title")@title[fz:20px;w:100%]': '' }]
+      },
+      { 'div': [
+        { 'input(type="text" placeholder="Subtitle")@subtitle[w:100%]': '' }]
+      },
       { 'h4': 'Info' },
-      { 'button@addInfoBtn': 'Add info' },
-      infoElm, 
+      { '@infoTable': '' },
+      { '@addInfoBtn[mt:20px]': [{ 'span[p:10px; bgColor:#fff]': 'Add'}] },
       { 'h4': 'Content' },
       { '@content': '' },
-      { 'button@addContentBtn': 'Add content' }
-    ];
-  }); // end of PostEditor.dom
-
-  vu.method('prependElm', (value, sel) => {
-    let params = {};
-    if (typeof value != 'object' || !value) {
-      value = {};
+      { '@addContentBtn[mt:20px]': [{ 'span[p:10px; bgColor:#fff]': 'Add'}] }]
     }
-    value.postEditor = vu;
+  ]); // end of PostEditor.dom
 
-    if (!sel) {
-      params = {
-        sel: vu.sel('@content'),
-        method: 'prepend',
-        data: value
-      }
-    } else {
-      params = {
-        sel: sel,
-        method: 'before',
-        data: value
-      };
-    }
+  vu.method('done', cb => {
+    doneCb = cb;
+  });
 
-    let elmVu = V.build('ContentElement', params); 
-    elmVu.$().data('vuid', elmVu.id); // so that we can access "data-vuid" via this data
-    vu.contentElm(elmVu); 
-  }); // end of PostEditor.prependElm
-
-  vu.method('appendElm', (value, sel) => {
-    let params = {};
-    if (typeof value != 'object' || !value) {
-      value = {};
-    }
-
-    // Assign this post editor to its children views
-    value.postEditor = vu;
-
-    if (!sel) {
-      params = {
-        sel: vu.sel('@content'),
-        method: 'append',
-        data: value
-      };
-    } else {
-      params = {
-        sel: sel,
-        method: 'after',
-        data: value
-      };
-    }
-
-    let elmVu = V.build('ContentElement', params); 
-    elmVu.$().data('vuid', elmVu.id); // so that we can access "data-vuid" via this data
-    vu.contentElm(elmVu); 
+  vu.method('appendElm', value => {
+    V.build('EditableElement', {
+      sel: vu.sel('@content'),
+      method: 'append',
+      data: value || {}
+    }); 
   }); // end of PostEditor.appendElm
-
-  vu.method('contentElm', a => {
-    if (typeof a == 'string') {
-      return contentElmVus[a] || null;
-    } else if (a && (typeof a.id == 'string')) {
-      contentElmVus[a.id] = a;
-      return null;
-    }
-  }); // end of PostEditor.contentElm
 
   vu.method('save', cb => {
     let params = Object.assign({}, 
       vu.fetch(),
       { postId: vu.get('postId') });
 
-    console.log('save', params);
-
     if (params.content) {
       params.content = JSON.stringify(params.content);
     }
     cope.send('/post/update', params).then(res => {
+      console.log('saved', res);
+      let upd = res && res.data; // updated post data
+      if (!Array.isArray(upd.value && upd.value.content)) {
+        try {
+          upd.value.content = JSON.parse(upd.value.content);
+        } catch (err) {
+          console.error(err);
+          upd.value.content = [];
+        }
+      }
+      DS.set('post-' + vu.get('postId'), res && res.data);
       if (typeof cb == 'function') {
-        console.log('saved', res);
         cb(res && res.data);  
       }
     });
@@ -718,12 +716,12 @@ V.createClass('PostEditor', vu => {
     let content = [];
 
     vu.$('@content').children().each(function() {
-      let id = $(this).data('vuid');
-      let elmVu = vu.contentElm(id);
-      if (elmVu) {
-        let elmData = Object.assign({}, elmVu.get());
-        delete elmData.postEditor;
-        content = content.concat(elmData);
+      let elmVu = $(this).data('view');
+      if (elmVu && elmVu.fetch) {
+        let fetched = elmVu.fetch();
+        if (fetched) {
+          content = content.concat(Object.assign({}, fetched));
+        }
       }
     });
 
@@ -738,35 +736,38 @@ V.createClass('PostEditor', vu => {
   }); // end of PostEditor.fetch
 
   vu.method('renderView', () => {
-    let content = vu.get('content');
-    if (!content) {
-      content = [];
-      vu.set('content', []);
+    let postData = DS.get('post-' + vu.get('postId'));
+    let v = postData && postData.value;
+    if (!v) {
+      console.error('Failed to fetch the post:', postData);
+      return;
     }
 
-    vu.$('@title').val(vu.get('title'));
-    vu.$('@subtitle').val(vu.get('subtitle'));
+    vu.$('@title').val(v.title || 'Untitled');
+    vu.$('@subtitle').val(v.subtitle);
     vu.$('@content').html('');
-    content.map(x => {
-      vu.appendElm(x);
-    });
+    try {
+      v.content.map(x => {
+        vu.appendElm(x);
+      });
+    } catch (err) {
+      v.content = [];
+      console.error(err);
+    }
   }); // end of PostEditor.renderView
-
-  vu.method('done', cb => {
-    doneCb = cb;
-  });
 
   vu.init(data => {
     vu.renderView();
-    vu.$('@addContentBtn').on('click', evt => {
-      vu.appendElm();
-    });
     vu.$('@ctl-d').on('click', function() {
-      vu.save();
-      done();
+      vu.save(() => {
+        done();
+      });
     });
     vu.$('@ctl-r').on('click', function() {
       done();
+    });
+    vu.$('@addContentBtn').on('click', function() {
+      vu.appendElm();
     });
     vu.$('@title').on('keyup', function() {
       // TBD delay save
@@ -777,178 +778,347 @@ V.createClass('PostEditor', vu => {
   }); // end of PostEditor.init
 }); // end of `PostEditor`
 
-V.createClass('ContentElement', vu => {
-  let postEditor = vu.get('postEditor');
-  if (!postEditor) {
-    return console.error('Failed to find post editor');
-  }
-  let onChangeCb = function() {};
-  let actionBtns = { 'div@actions': [
-    { '@act-d[inline-block; p:6px; bgColor:#44f]': 'Done' },
-    { '@act-r[inline-block; p:6px; bgColor:#e00]': 'Remove' },
-    { '@act-p[inline-block; p:6px; bgColor:#ddd]': 'Prepend' },
-    { '@act-a[inline-block; p:6px; bgColor:#ddd]': 'Append' }]
-  }; 
-
-  vu.dom(data => {
-    let dom = '';
-    switch (data && data.type) {
-      case 'text': 
-        dom = vu.textDOM();
-        break;
-      default: // New element
-        dom = vu.newDOM();
-    }
-    return [{ 'div[b:2px solid #333; p:8px; mb:8px]': [
-      { '@elem-root': dom },
-      { '@fallback[none]': 'Double click to edit' }]
-    }];
-  });
-
-  vu.method('newDOM', () => {
-    return [
-      { '@textOp': 'Text' },
-      { '@linkOp': 'Link' },
-      { '@postOp': 'Post' },
-      { '@imgOp': 'Image' },
-      { '@vidOp': 'Video' },
-      { '@audOp': 'Audio' }
-    ];
-  }); // end of ContentElement.newDOM
-
-  vu.method('textDOM', () => {
-    let data = vu.get();
-    let header = data && data.header && data.header.trim();
-    let text = data && data.text && data.text.trim();
-    console.log('textDOM', data);
-    return [
-      { '@normal[none;p:10px;]': [
-        { 'h4': data.header || '' },
-        { 'p': data.text && data.text.replace(/\n/g, '<br>') || '' }] 
-      },
-      { '@edit': [
-        [ 'input(type="text" placeholder="Header" value="' + (data.header || '') + '")', '' ],
-        [ 'textarea@focusFirst(placeholder="Write something here.")', data.text || '' ],
-        actionBtns] 
-      }
-    ];
-  }); // end of ContentElement.textDOM
-
-  vu.method('initTextElm', () => {
-    vu.$('input').on('keyup', evt => {
-      let header = vu.$('input').val().trim() || '';
-      vu.set('header', header);
-      vu.$('h4').text(header);
-    });
-
-    vu.$('textarea').on('keyup', evt => {
-      let text = vu.$('textarea').val().trim() || '';
-      vu.set('text', text);
-      vu.$('p').html(text.replace(/\n/g, '<br>'));
-    });
-  }); // end of ContentElement.initTextElm
-
-  vu.method('onChange', cb => {
-    if (typeof cb == 'function') {
-      onChangeCb = cb;
-    }
-  }); // end of ContentElement.onChange
-
-  vu.method('checkFallback', () => {
-    vu.$('@fallback').hide();
-    let data = vu.get();
-    switch (data.type) {
-      case 'text':
-        if (!data.header && !data.text) {
-          vu.$('@fallback').show();
-        } 
-        break;
-      default:
-    }
-  }); // end of ContentElement.checkFallback
-
-  vu.method('initTyped', () => {
-    let initFn = {
-      'text': vu.initTextElm
-    };
-    let data = vu.get();
-    if (!data || !data.type 
-      || !vu[data.type + 'DOM']
-      || !initFn[data.type]) {
-      return;
-    }
-    let vuDom = vu[data.type + 'DOM']();
-    vu.$('@elem-root').html(V.dom(vuDom), vu.id);
-
-    // Init typed element
-    initFn[data.type]();
-
-    vu.$('@normal').on('dblclick', evt => {
-
-      // Editing
-      vu.$('@fallback').hide();
-      vu.$('@normal').hide();
-      vu.$('@edit').fadeIn();
-      vu.$('@focusFirst').focus();
-    });
-
-    vu.$('@fallback').on('dblclick', evt => {
-      vu.$('@normal').dblclick();
-    });
-
-    vu.$('@actions').children().off('click').on('click', evt => {
-
-      // Done editing
-      postEditor.save();
-      vu.checkFallback();
-      vu.$('@edit').hide();
-      vu.$('@normal').fadeIn();
-    });
-    vu.$('@act-p').on('click', evt => {
-      postEditor.prependElm(null, vu.sel());
-    });
-    vu.$('@act-a').on('click', evt => {
-      postEditor.appendElm(null, vu.sel()); 
-    });
-    vu.$('@act-r').on('click', evt => {
-      vu.$().css('background-color', '#e00').fadeOut(() => {
-        vu.$().remove();
-      });
-    });
-    vu.$('@focusFirst').focus();
-  }); // end of ContentElement.initTyped
-
-  vu.init(data => {
-    if (!data.type) {
-      [ 'text', 
-        'link',
-        'post',
-        'img',
-        'vid',
-        'aud' ].map(type => {
-          vu.$('@' + type + 'Op').on('click', evt => {
-            vu.set('type', type);
-            vu.initTyped();
-          });
-        });
-    } else {
-      vu.initTyped();
-    } 
-  }); // end of ContentElement.init
-}); // end of `ContentElement`
-
-/*
-V.createClass('ContentEditor', vu => {
+V.createClass('EditableElement', vu => {
+  let elmView = {};
+  
   vu.dom(data => [
-    { 'div': 'Content Editor' }
+    { 'div[bgColor:#fff; m:10px 0; p:10px 0;]': [
+      { 'div@elm': '' },
+      { 'div[h:40px]': [
+        { 'div@controlBtns[none]': [
+          { 'div@prependBtn[inline-block;bgColor:#fff;p:10px;mr:2px]': 'Prepend' },
+          { 'div@appendBtn[inline-block;bgColor:#fff;p:10px;mr:2px]': 'Append' },
+          { 'div@moveUpBtn[inline-block;bgColor:#fff;p:10px;mr:2px]': 'Move Up' },
+          { 'div@moveDownBtn[inline-block;bgColor:#fff;p:10px;mr:2px]': 'Move Down' },
+          { 'div@removeBtn[inline-block;color:#f00;p:10px;mr:2px]': 'Remove' }] 
+        }]
+      }]
+    }
   ]);
 
-  vu.method('onChange', cb => {
-    console.log('TBD');
-    // TBD
+  vu.method('fetch', () => {
+    try {
+      return elmView.fetch();
+    } catch (err) {
+      return null;
+    }
+  }); // end of EditableElement.fetch
+
+  vu.method('mode', mode => {
+    if (mode == 'edit') {
+      vu.$('@controlBtns').show();
+    } else {
+      vu.$('@controlBtns').hide();
+    }
+  }); // end of EditableElement.mode
+
+  vu.init(data => {
+
+    vu.$().data('view', vu);
+
+    vu.$().on('mouseenter', () => {
+      vu.mode('edit');
+    });
+    vu.$().on('mouseleave', () => {
+      vu.mode('normal');
+    });
+
+    vu.$('@prependBtn').on('click', evt => {
+      V.build('EditableElement', {
+        sel: vu.sel(),
+        method: 'before'
+      });
+    });
+
+    vu.$('@appendBtn').on('click', evt => {
+      V.build('EditableElement', {
+        sel: vu.sel(),
+        method: 'after'
+      });
+    });
+
+    vu.$('@moveUpBtn').on('click', evt => {
+      vu.$().prev().before(vu.$());
+    });
+
+    vu.$('@moveDownBtn').on('click', evt => {
+      vu.$().next().after(vu.$());
+    });
+
+    vu.$('@removeBtn').on('click', evt => {
+      vu.$().remove();
+    });
+
+    if (data.hasOwnProperty('postId')) {
+      elmView = V.build('EditablePostLink', {
+        sel: vu.sel(),
+        data: data
+      });
+    } else if (data.hasOwnProperty('link')) {
+      elmView = V.build('EditableLink', {
+        sel: vu.sel('@elm'),
+        data: data
+      });
+    } else if (data.hasOwnProperty('mediaArr')) {
+      elmView = V.build('EditableMedia', {
+        sel: vu.sel('@elm'),
+        data: data
+      });
+    } else if (data.hasOwnProperty('header') 
+      || data.hasOwnProperty('text')) {
+      elmView = V.build('EditableText', {
+        sel: vu.sel('@elm'),
+        data: data
+      });
+    } else {
+      vu.$('@controlBtns').remove();
+      V.build('EditableTypeSelector', {
+        sel: vu.sel('@elm')
+      }).onSelect(initData => {
+        elmView = V.build('EditableElement', {
+          sel: vu.sel(),
+          method: 'after',
+          data: initData
+        });  
+
+        vu.$().remove();
+      });
+    }
   });
-}); // end of `ContentEditor`
-*/
+}); // end of `EditalbeElement`
+
+V.createClass('EditableTypeSelector', vu => {
+  let onselect = null;
+  let initData = {};
+  initData.text = {
+    header: '',
+    text: ''
+  };
+
+  // TBD
+  //initData.post = { postId: 'none' };
+  initData.link = { link: '/' };
+  initData.media = { mediaArr: [] };
+
+  vu.dom(data => [
+    { 'div': [
+      { '@text[inline-block; p:10px; mr:10px]': 'Text' },
+      { '@post[inline-block; p:10px; mr:10px]': 'Post' },
+      { '@link[inline-block; p:10px; mr:10px]': 'Link' },
+      { '@media[inline-block; p:10px; mr:10px]': 'Media' }] 
+    }
+  ]);
+
+  vu.method('onSelect', callback => {
+    onselect = callback;
+  });
+
+  vu.init(data => {
+    ['text', 'post', 'link', 'media'].map(type => {
+      vu.$('@' + type).on('click', evt => {
+        if (typeof onselect == 'function') {
+          onselect(initData[type]);
+        }
+      });
+    });
+  }); // end of EditableTypeSelector.init
+}); // end of `EditableTypeSelector`
+
+V.createClass('EditableText', vu => {
+  vu.dom(data => [
+    { 'div': [
+      [ 'input@headerInput(placeholder="Header" value="' 
+        + (data.header || '') 
+        + '")[w:100%]' ]]
+    },
+    { 'div': [
+      { 'textarea@text(row=10 placeholder="Write something here.")[w:100%]': data.text }] 
+    }
+  ]);
+
+  vu.method('fetch', () => {
+    let v = {};
+    v.header = vu.get('header') || '';
+    v.header = v.header.trim();
+    v.text = vu.get('text') || '';
+    v.text = v.text.trim();
+    console.log('fetching text', v);
+    return v;
+  });
+
+  vu.init(data => {
+    vu.$('@headerInput').on('keyup', evt => {
+      vu.set('header', vu.$('@headerInput').val());
+    });
+    vu.$('@text').on('keyup', evt => {
+      vu.set('text', vu.$('@text').val());
+    });
+  });
+}); // end of `EditableText`
+
+V.createClass('EditableLink', vu => {
+  vu.dom(data => [
+    { 'div': [
+      { 'input@linkInput(placeholder="URL")': '' }]
+    },
+    { 'div': [ 
+      { '@editable-cover[none]': '' },
+      { 'button@addCoverBtn': 'Add Cover' }]
+    }
+  ]);
+
+  vu.method('addCover', () => {
+    V.build('EditableMedia', {
+      sel: vu.sel('@editable-cover'),
+      data: {
+        header: data.header || '',
+        text: data.text || ''
+      }
+    });
+    // TBD: set "imgsrc" here
+
+    vu.$('@editable-cover').fadeIn();
+  }); // end of EditableLink.addCover
+
+  vu.method('fetch', () => {
+    let v = {};
+    v.link = vu.get('link') || '#';
+    v.header = vu.get('header') || '';
+    v.text = vu.get('text') || '';
+    v.imgsrc = vu.get('imgsrc') || null;
+    return v;
+  }); // end of EditableLink.fetch
+
+  vu.init(data => {
+    let linkInput = vu.$('@linkInput');
+    linkInput.on('keyup', evt => {
+      vu.set('link', linkInput.val().trim() || '');
+    });
+
+    linkInput.val(data.link || '');
+    // TBD: click to add cover
+  });
+}); // end of `EditableLink`
+
+V.createClass('EditableMedia', vu => {
+  vu.dom(data => [
+    { 'div[w:100%;bgColor:#fff]': [
+      { '@display': '' },
+      { '@panel[none]': '' },
+      { 'div': [
+        { 'span@uploadBtn[p:10px]': 'Upload' },
+        { 'span@extBtn[p:10px]': 'URL' },
+        { 'span@libBtn[p:10px]': 'Library' }] 
+      }]
+    }
+  ]); // end of EditableMedia.dom
+
+  vu.method('mode', a => {
+    if (a == 'edit') {
+      vu.$('@display').hide();
+      vu.$('@panel').show();
+      vu.$('@saveBtn').hide();
+    } else {
+      vu.$('@display').show();
+      vu.$('@panel').hide();
+      vu.$('@saveBtn').show();
+    }
+  });
+
+  vu.method('checkType', a => {
+    // TBD
+    return new Promise((resolve, reject) => {
+      resolve('img');
+    });
+  });
+
+  vu.method('fetch', () => {
+    let v = {};
+    v.mediaArr = vu.get('mediaArr') || [];
+    return v;
+  }); // end of EditableMedia.fetch
+
+  vu.method('addLinkUI', () => {
+    vu.mode('edit');
+
+    vu.$('@panel').html(V.dom([
+      { 'div': [
+        { 'input@urlInput(type="text" placeholder="Paste the link here")': '' },
+        { '@addLinkBtn[p:10px; fc:#c00]': 'Add' }] 
+      }
+    ], vu.id));
+
+    vu.$('@addLinkBtn').off('click').on('click', evt => {
+      let url = vu.$('@urlInput').val().trim();
+      console.log(url);
+      vu.checkType(url).then(type => {
+        console.log(type);
+        let v = null;
+        if (type == 'img') {
+          v = { imgsrc: url };
+        } 
+
+        V.build('EditableMediaItem', {
+          sel: vu.sel('@display'),
+          method: 'append',
+          data: {
+            imgsrc: url
+          }
+        });
+
+        if (v) {
+          vu.set('mediaArr', vu.get('mediaArr').concat(v));
+        }
+
+        vu.mode('normal');
+      });
+    });
+  }); // end of EditableMedia.addLinkUI
+
+  vu.method('render', () => {
+    vu.$('@display').html('');
+    vu.get('mediaArr').map(x => {
+      V.build('EditableMediaItem', {
+        sel: vu.sel('@display'),
+        method: 'append',
+        data: x
+      });
+    });
+  });
+
+  vu.init(data => {
+    let mediaArr = data && data.mediaArr;
+    if (!Array.isArray(mediaArr)) {
+      mediaArr = [];
+    }
+    vu.set('mediaArr', mediaArr);
+    vu.render();
+
+    // TBD: To upload from the device
+
+    // To set external link to the media
+    vu.$('@extBtn').on('click', evt => {
+      vu.addLinkUI();
+    });
+
+    // TBD: To choose from the library
+
+  }); // end of EditableMedia.init
+}); // end of EditableMedia
+
+V.createClass('EditableMediaItem', vu => {
+  vu.dom(data => [
+    { 'div': '' }
+  ]);
+
+  vu.init(data => {
+    if (data.imgsrc) {
+      vu.$().html(V.dom([
+        ['img(src="' + data.imgsrc + '")[w:200px]']
+      ]), vu.id);
+    }
+  });
+}); // end of `EditableMediaItem`
 
 // Build `Cope` and saved as "CopeRoot"
 DS.set('CopeRoot', V.build('Cope', {
