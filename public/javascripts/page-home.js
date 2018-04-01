@@ -488,7 +488,6 @@ V.createClass('PostPreview', vu => {
         vu.$('@title').html(v.title || 'Untitled');
         vu.$('@subtitle').html(v.subtitle || '');
 
-        console.log(vu.get('postId'), v);
         try {
           v.content = JSON.parse(v.content);
         } catch (err) {
@@ -593,16 +592,16 @@ V.createClass('Post', vu => {
   vu.method('elmDOM', x => {
     console.log('elmDOM', x);
     let innerDOM = { 'div': [] };
-    if (x.header) {
+    if (x.header && x.header.length > 0) {
       innerDOM.div = innerDOM.div.concat({ 'h4': x.header }); 
     } 
-    if (x.text) {
+    if (x.text && x.text.length > 0) {
       innerDOM.div = innerDOM.div.concat({ 'p': x.text }); 
     }
     if (innerDOM.div.length < 1) {
       innerDOM = '';
     }
-    if (x.mediaArr) {
+    if (x.mediaArr && x.mediaArr.length > 0) {
       innerDOM = {
         'div': [
           vu.mediaDOM(x.mediaArr),
@@ -611,14 +610,14 @@ V.createClass('Post', vu => {
       };
     } 
     if (x.link) {
-      innerDOM = ['a(href="' + x.link + '" target="_blank")', innerDOM || x.link];
+      innerDOM = ['a(href="' + x.link + '" target="_blank")', [innerDOM || x.link]];
     }
     console.log(innerDOM);
     return innerDOM;
   }); // end of Post.elmDOM
 
   vu.method('mediaDOM', mediaArr => {
-    if (!Array.isArray(mediaArr)) {
+    if (!Array.isArray(mediaArr) || mediaArr.length < 1) {
       return '';
     }
     let dom = { 'div': mediaArr.map(x => {
@@ -652,6 +651,7 @@ V.createClass('PostEditor', vu => {
     { 'div': [ 
       { 'div@controls': [
         { '@ctl-d[inline-block; p:6px; bgColor:#44f]': 'Done' },
+        { '@ctl-t[inline-block; p:6px; bgColor:#ddd]': 'Save as template' },
         { '@ctl-r[inline-block; p:6px; bgColor:#e00]': 'Remove this post' },
         { '@ctl-p[inline-block; p:6px; bgColor:#ddd]': 'Set publish time' },
         { '@ctl-a[inline-block; p:6px; bgColor:#ddd]': 'Add to store' }]
@@ -782,7 +782,7 @@ V.createClass('EditableElement', vu => {
   let elmView = {};
   
   vu.dom(data => [
-    { 'div[bgColor:#fff; m:10px 0; p:10px 0;]': [
+    { 'div[w:100%; max-width:600px; bgColor:#fff; m:10px 0; p:10px 0;]': [
       { 'div@elm': '' },
       { 'div[h:40px]': [
         { 'div@controlBtns[none]': [
@@ -957,58 +957,114 @@ V.createClass('EditableText', vu => {
 }); // end of `EditableText`
 
 V.createClass('EditableLink', vu => {
+  let textView;
+  let mediaView;
+
   vu.dom(data => [
     { 'div': [
+      { '@editableCover[none]': [
+        { '@cover': '' },
+        { '@text': '' },
+        { 'button@removeCoverBtn': 'Remove Cover' }] 
+      },
       { 'input@linkInput(placeholder="URL")': '' }]
     },
     { 'div': [ 
-      { '@editable-cover[none]': '' },
-      { 'button@addCoverBtn': 'Add Cover' }]
+      { 'button@editCoverBtn': 'Edit Cover' }]
     }
   ]);
 
-  vu.method('addCover', () => {
-    V.build('EditableMedia', {
-      sel: vu.sel('@editable-cover'),
+  vu.method('editCover', () => {
+    vu.$('@editableCover').fadeIn();
+    vu.$('@editCoverBtn').hide();
+  }); // end of EditableLink.editCover
+
+  vu.method('render', () => {
+
+    let v = vu.get();
+
+    mediaView = V.build('EditableMedia', {
+      sel: vu.sel('@cover'),
       data: {
-        header: data.header || '',
-        text: data.text || ''
+        mediaArr: vu.get('mediaArr')
       }
     });
     // TBD: set "imgsrc" here
 
-    vu.$('@editable-cover').fadeIn();
-  }); // end of EditableLink.addCover
+    textView = V.build('EditableText', {
+      sel: vu.sel('@text'),
+      data: {
+        header: vu.get('header') || '',
+        text: vu.get('text') || ''
+      }
+    });
+
+    if (v.header || v.text || (v.mediaArr && v.mediaArr.length)) {
+      vu.editCover();
+    } 
+  }); // end of EditableLink.render
 
   vu.method('fetch', () => {
     let v = {};
     v.link = vu.get('link') || '#';
-    v.header = vu.get('header') || '';
-    v.text = vu.get('text') || '';
-    v.imgsrc = vu.get('imgsrc') || null;
+    if (textView && textView.fetch) {
+      v = Object.assign(v, textView.fetch());
+    }
+    if (mediaView && mediaView.fetch) {
+      v = Object.assign(v, mediaView.fetch());
+    }
+
+    // Update vu's data
+    vu.set(v);
+
     return v;
   }); // end of EditableLink.fetch
 
   vu.init(data => {
+
     let linkInput = vu.$('@linkInput');
     linkInput.on('keyup', evt => {
       vu.set('link', linkInput.val().trim() || '');
     });
 
     linkInput.val(data.link || '');
-    // TBD: click to add cover
+    
+    // Click to edit cover
+    vu.$('@editCoverBtn').on('click', evt => {
+      vu.editCover();
+    });
+
+    // Click to remove cover
+    vu.$('@removeCoverBtn').on('click', evt => {
+      vu.$('@editableCover').fadeOut();
+      try {
+        vu.set({
+          header: '',
+          text: '',
+          mediaArr: []
+        });
+      } catch (err) {
+        console.error(err);
+      }
+      vu.render();
+    });
+
+    vu.render();
   });
 }); // end of `EditableLink`
 
 V.createClass('EditableMedia', vu => {
   vu.dom(data => [
-    { 'div[w:100%;bgColor:#fff]': [
+    { 'div[w:100%;bgColor:#fff;b:2px solid #333]': [
       { '@display': '' },
       { '@panel[none]': '' },
-      { 'div': [
-        { 'span@uploadBtn[p:10px]': 'Upload' },
-        { 'span@extBtn[p:10px]': 'URL' },
-        { 'span@libBtn[p:10px]': 'Library' }] 
+      { '@addBtn': [
+        { 'div': 'Add' }, 
+        { '@addMethodBtns[none]': [
+          { 'span@uploadBtn[p:10px]': 'Upload' },
+          { 'span@extBtn[p:10px]': 'URL' },
+          { 'span@libBtn[p:10px]': 'Library' }] 
+        }]
       }]
     }
   ]); // end of EditableMedia.dom
@@ -1023,7 +1079,7 @@ V.createClass('EditableMedia', vu => {
       vu.$('@panel').hide();
       vu.$('@saveBtn').show();
     }
-  });
+  }); 
 
   vu.method('checkType', a => {
     // TBD
@@ -1044,7 +1100,7 @@ V.createClass('EditableMedia', vu => {
     vu.$('@panel').html(V.dom([
       { 'div': [
         { 'input@urlInput(type="text" placeholder="Paste the link here")': '' },
-        { '@addLinkBtn[p:10px; fc:#c00]': 'Add' }] 
+        { '@addLinkBtn[p:10px; fc:#c00]': 'Save Link' }] 
       }
     ], vu.id));
 
@@ -1102,6 +1158,14 @@ V.createClass('EditableMedia', vu => {
     });
 
     // TBD: To choose from the library
+
+    vu.$('@addBtn').on('mouseenter', evt => {
+      vu.$('@addMethodBtns').fadeIn();
+    });
+
+    vu.$('@addBtn').on('mouseleave', evt => {
+      vu.$('@addMethodBtns').fadeOut();
+    });
 
   }); // end of EditableMedia.init
 }); // end of EditableMedia
