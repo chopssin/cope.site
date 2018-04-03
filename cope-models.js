@@ -165,13 +165,26 @@ module.exports = function() {
       }); // end of Promise
     }); // end of `delApp`
 
-    model.method('getApp', (appId, userData) => {
+    model.method('updateApp', (obj, userData) => {
       return new Promise((resolve, reject) => {
-        let appNode = M.model('cope/app').node(validQuery);
-        appNode.fetchData().next(() => {
-          if (appNode.nodeId()) {
+        model.checkUpdateApp(obj, userData).then(valid => {
+          let appNode = M.model('cope/app').node(valid.query);
+          appNode.val(valid.updates).next(() => {
             resolve(appNode.snap.data());
-          }
+          });
+        });
+      });
+    }); // end of `updateApp`
+
+    model.method('getApp', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        model.checkGetApp(obj, userData).then(validQuery => {
+          let appNode = M.model('cope/app').node(validQuery);
+          appNode.fetchData().next(() => {
+            if (appNode.nodeId()) {
+              resolve(appNode.snap.data());
+            }
+          });
         });
       });
     }); // end of `getApp`
@@ -181,7 +194,7 @@ module.exports = function() {
         model.checkGetAllApps(obj, userData).then(validQuery => {
           debug(validQuery);
           if (validQuery.appId) {
-            model.getApp(validQuery.appId).then(appData => {
+            model.getApp(validQuery).then(appData => {
               resolve(appData);
             }).catch(err => {
               debug(err);
@@ -267,10 +280,47 @@ module.exports = function() {
       }); // end of Promise
     }); // end of `checkDelApp`
 
-    model.method('checkGetApp', (appId, userData) => {
+    model.method('checkUpdateApp', (obj, userData) => {
       return new Promise((resolve, reject) => {
+        let appId = obj.appId;
+        let copeUserNodeId = userData 
+          && userData.copeUserData 
+          && userData.copeUserData.nodeId
+          || null;
+        let checkNode = model.node({ appId: appId });
+
+        if (!appId || !copeUserNodeId) {
+          debug(obj, userData);
+          reject('Invalid appId or unathorized request.');
+          return;
+        }
+
+        checkNode.fetchData().next(() => {
+          let appNodeId = checkNode.nodeId();
+          if (appNodeId) {
+            G.findLinks({
+              '$name': 'appOwner',
+              '$source': appNodeId,
+              '$target': copeUserNodeId
+            }).then(links => {
+              if (links && links.length === 1) {
+                delete obj.appId;
+                resolve({
+                  query: appNodeId,
+                  updates: obj
+                });
+              }
+            });
+          }
+        }); // end of checkNode.fetchData ...
+      }); // end of Promise
+    }); // end of `checkUpdateApp`
+
+    model.method('checkGetApp', (obj, userData) => {
+      return new Promise((resolve, reject) => {
+        let appId = obj && obj.appId;
         if (typeof appId == 'string') {
-          resolve(appId);
+          resolve({ appId: appId });
         }
       });
     }); // end of `checkGetApp`

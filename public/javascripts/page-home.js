@@ -238,37 +238,6 @@ V.createClass('AppLayout', vu => {
   vu.method('show', sec => {
     vu.$('.main-content > section').hide();
     vu.$('@' + sec).show();
-    /*
-    if (sec == 'newPost') {
-      cope.send('/post/add', {
-        appId: vu.get('appId')
-      }).then(res => {
-        console.log(res);
-        try {
-          postId = res.data.postId;
-        } catch (err) {
-          console.error(err);
-        }
-
-        if (postId) {
-          V.build('PostEditor', {
-            sel: vu.sel('@newPost'),
-            data: {
-              appId: vu.get('appId'),
-              postId: postId
-            }
-          });
-        }
-      });
-
-      
-      V.build('NewPostSec', {
-        sel: vu.sel('@newPost'),
-        data: {
-          appId: vu.get('appId')
-        }
-      });
-    } */
     if (sec == 'posts') {
       V.build('PostsSec', {
         sel: vu.sel('@posts'),
@@ -276,6 +245,13 @@ V.createClass('AppLayout', vu => {
           appId: vu.get('appId')
         }
       });  
+    } else if (sec == 'settings') {
+      V.build('SettingsSec', {
+        sel: vu.sel('@settings'),
+        data: {
+          appId: vu.get('appId')
+        }
+      });
     }
   });
 
@@ -427,7 +403,6 @@ V.createClass('PostsSec', vu => {
 
   vu.method('listPosts', () => {
     cope.send('/post/all').then(res => {
-      console.log(res.data);
       vu.$('@posts').html('');
       if (Array.isArray(res && res.data)) {
         res.data.map(postId => {
@@ -1183,6 +1158,52 @@ V.createClass('EditableMediaItem', vu => {
     }
   });
 }); // end of `EditableMediaItem`
+
+V.createClass('SettingsSec', vu => {
+  vu.dom(data => [
+    { 'div': [
+      { 'div': [
+        { 'span[p:10px]': 'App ID' },
+        { 'span@appId[p:10px]': '' }] 
+      }, 
+      { 'div': [
+        { 'span[p:10px]': 'App Name' },
+        { 'span@appName[p:10px]': '' }] 
+      }, 
+      { 'div' : [
+        { 'span[p:10px]': 'Domain' },
+        { 'input@domainInput(type="text" placeholder="Set your unique domain.")': '' },
+        { '@domainClaimBtn': 'Claim' }] 
+      }]
+    }
+  ]); // end of SettingsSec.dom
+
+  vu.method('render', () => {
+    cope.send('/app/get', {
+      appId: vu.get('appId')
+    }).then(res => {
+      let v = res && res.data && res.data.value;
+      vu.$('@appId').html(v.appId || '');
+      vu.$('@appName').html(v.appName || 'Untitled App');
+      vu.$('@domainInput').val(v.appDomain || '');
+    });
+  });
+
+  vu.init(data => {
+    vu.$('@domainClaimBtn').on('click', evt => {
+      let domain = vu.$('@domainInput').val().trim();
+      console.log('Claim');
+      cope.send('/app/update', {
+        appId: data.appId,
+        appDomain: domain
+      }).then(res => {
+        console.log(res);
+        vu.render();
+      });
+    });
+    vu.render();
+  }); // end of SettingsSec.init
+}); // end of `SettingsSec`
 
 // Build `Cope` and saved as "CopeRoot"
 DS.set('CopeRoot', V.build('Cope', {
