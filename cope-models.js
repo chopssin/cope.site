@@ -193,7 +193,7 @@ module.exports = function() {
       return new Promise((resolve, reject) => {
         model.checkGetAllApps(obj, userData).then(validQuery => {
           debug(validQuery);
-          if (validQuery.appId) {
+          if (validQuery.appId || validQuery.appDomain) {
             model.getApp(validQuery).then(appData => {
               resolve(appData);
             }).catch(err => {
@@ -321,6 +321,8 @@ module.exports = function() {
         let appId = obj && obj.appId;
         if (typeof appId == 'string') {
           resolve({ appId: appId });
+        } else {
+          resolve(obj);
         }
       });
     }); // end of `checkGetApp`
@@ -679,8 +681,14 @@ module.exports = function() {
         && userData.copeUserData 
         && userData.copeUserData.nodeId;
 
+      if (obj && obj.appId) {
+        linksQuery = {};
+        linksQuery['$name'] = 'app';
+      }
+
       return new Promise((resolve, reject) => {
-        if (linksQuery['$target']) {
+        if (linksQuery['$target'] 
+          || (linksQuery['$name'] == 'app')) {
           resolve({
             linksQuery: linksQuery
           });
