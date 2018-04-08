@@ -5,6 +5,14 @@ let cope = require('../cope');
 let copeModels = require('../cope-models');
 let M = cope.M;
 
+// To get hostname without port
+let hostname = cope.util.hostname;
+
+router.all('*', function(req, res, next) {
+  debug('HOST = ' + hostname(req));
+  next();
+});
+
 /*********** 
  *** API *** 
  ***********
@@ -56,7 +64,10 @@ let setAPI = function(method, apiPath, modelName, modelMethod) {
     userData.copeUserData = req.session && req.session.copeUserData || null;
     userData.appUserData = req.session && req.session.appUserData || null;
 
-    M.model(modelName)[modelMethod](obj, userData)
+    let params = {};
+    params.hostname = hostname(req);
+
+    M.model(modelName)[modelMethod](obj, userData, params)
       .then(data => {
       res.send({ ok: true, data: data || null });
     }).catch(err => {
@@ -71,14 +82,13 @@ setAPI('post', '/profile/get', 'cope/user', 'getProfile');
 
 setAPI('post', '/app/add', 'cope/app', 'addApp');
 setAPI('post', '/app/del', 'cope/app', 'delApp');
-setAPI('post', '/app/get', 'cope/app', 'getAllApps'); // TBD
-//setAPI('post', '/app/all', 'cope/app', 'getAllApps'); // TBD
-setAPI('post', '/app/update', 'cope/app', 'updateApp'); // TBD
+setAPI('post', '/app/get', 'cope/app', 'getAllApps');
+setAPI('post', '/app/update', 'cope/app', 'updateApp'); 
 
 setAPI('post', '/post/add', 'cope/post', 'addPost');
 setAPI('post', '/post/del', 'cope/post', 'delPost');
 setAPI('post', '/post/get', 'cope/post', 'getPost');
-setAPI('post', '/post/all', 'cope/post', 'getPostIds'); // TBD
+setAPI('post', '/post/all', 'cope/post', 'getPostIds');
 setAPI('post', '/post/update', 'cope/post', 'updatePost');
 
 // Define APIs which requires more flexible and custom design

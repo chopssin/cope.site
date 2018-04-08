@@ -1,3 +1,5 @@
+let copeHosts = ['localhost', 'cope-site'];
+
 let debug = require('debug')('cope.site:cope');
 let MongoClient = require('mongodb').MongoClient;
 let ObjectId = require('mongodb').ObjectId;
@@ -31,6 +33,7 @@ module.exports = function() {
 
   // cope = <obj>copeAPI: {
   //   - util = <obj>utilObj: {
+  //     - hostname = (expressRequest) => hostname || null 
   //     - makeQueue = () => <obj>queueAPI: {
   //       - add = (<func>) => queueAPI
   //       - next = () => queueAPI
@@ -82,6 +85,25 @@ module.exports = function() {
   // } EOF copeAPI
   const cope = {};
   cope.util = {};
+  cope.util.hostname = function(expressReq) {
+    try {
+      let host = expressReq.get('host');
+      let idx = host.indexOf(':');
+      if (idx >= 0) {
+        host = host.slice(0, idx);
+      }
+      copeHosts.map(copeHost => {
+        if (host == copeHost) {
+          host = null;
+        }
+      });
+      return host;
+    } catch (err) {
+      debug(err);
+    }
+    return null;
+  }; // end of cope.util.hostname
+
   cope.util.makeQueue = function() {
     let queueAPI = {};
     let funcs = [];

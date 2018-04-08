@@ -1174,6 +1174,11 @@ V.createClass('SettingsSec', vu => {
         { 'span[p:10px]': 'Domain' },
         { 'input@domainInput(type="text" placeholder="Set your unique domain.")': '' },
         { '@domainClaimBtn': 'Claim' }] 
+      }, 
+      { 'div': [ 
+        { 'span': 'Host' },
+        { 'input@hostInput(type="text" placeholder="Set your custom HOST")': '' },
+        { '@hostClaimBtn': 'Claim' }]
       }]
     }
   ]); // end of SettingsSec.dom
@@ -1186,6 +1191,7 @@ V.createClass('SettingsSec', vu => {
       vu.$('@appId').html(v.appId || '');
       vu.$('@appName').html(v.appName || 'Untitled App');
       vu.$('@domainInput').val(v.appDomain || '');
+      vu.$('@hostInput').val(v.appHost || '');
     });
   });
 
@@ -1196,6 +1202,18 @@ V.createClass('SettingsSec', vu => {
       cope.send('/app/update', {
         appId: data.appId,
         appDomain: domain
+      }).then(res => {
+        console.log(res);
+        vu.render();
+      });
+    });
+
+    vu.$('@hostClaimBtn').on('click', evt => {
+      let host = vu.$('@hostInput').val().trim();
+      console.log('Claim');
+      cope.send('/app/update', {
+        appId: data.appId,
+        appHost: host
       }).then(res => {
         console.log(res);
         vu.render();

@@ -1,4 +1,4 @@
-let app = function(appDomain) {
+let app = function() {
 
 let V = cope.views();
 let DS = V.dataStore();
@@ -52,11 +52,10 @@ V.createClass('PostPreview', vu => {
         vu.$('@coverImage').html(V.dom([['img(src="' + cover + '")[w:100%;]']]));
       }
 
-      // Store the post value
-      vu.$().prop('href', '/' 
-        + vu.get('appDomain') 
-        + '/post/' 
+      vu.$().prop('href', '/post/' 
         + vu.get('postId'));      
+
+      // Store the post value
       vu.set(v);
     });
   });
@@ -76,9 +75,8 @@ V.createClass('App', vu => {
   ]); // end of App.dom
 
   vu.method('render', () => {
-    cope.send('/app/get', {
-      appDomain: vu.get('appDomain')
-    }).then(res => {
+    console.log('RENDER APP');
+    cope.send('/app/get').then(res => {
       console.log(res);
       let v = res && res.data && res.data.value;
       vu.set('appId', v.appId);
@@ -102,8 +100,7 @@ V.createClass('App', vu => {
             sel: vu.sel('@posts'),
             method: 'append',
             data: {
-              postId: pid,
-              appDomain: vu.get('appDomain')
+              postId: pid
             }
           });
         });
@@ -118,9 +115,6 @@ V.createClass('App', vu => {
 
 V.build('App', {
   sel: '#page-container',
-  data: {
-    appDomain: appDomain
-  }
 });
 
 return; };

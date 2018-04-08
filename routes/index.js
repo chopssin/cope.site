@@ -4,30 +4,26 @@ var router = express.Router();
 let cope = require('../cope');
 let copeModels = require('../cope-models');
 let M = cope.M;
+let hostname = cope.util.hostname;
+
+router.all('*', function(req, res, next) {
+  let appHost = hostname(req);
+  if (appHost) {
+    debug('Requesting page on ' + appHost);
+    next();
+  } else {
+    debug('Requesting Cope');
+    res.render('index', { title: 'Cope' });
+  }
+});
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
-  if (req.session.userData) {
-    debug('requesting page "/" by', req.session.userData);
-  } else {
-    debug('requesting page "/" by anonymous user')
-  }
-  res.render('index', { title: 'Cope' });
+  res.render('appIndex');
 });
 
-router.get('/:appDomain', function(req, res) {
-  // TBD APP PAGE
-  let appDomain = req.params.appDomain;
-  debug('appDomain', appDomain);
-  res.render('appIndex', { appDomain: appDomain });
-});
-
-router.get('/:appDomain/post/:postId', function(req, res) {
-  // TBD APP PAGE
-  let appDomain = req.params.appDomain;
+router.get('/post/:postId', function(req, res) {
   let postId = req.params.postId;
-  debug('appDomain', appDomain);
-  debug('postId', postId);
   res.render('post', { postId: postId });
 });
 

@@ -176,9 +176,11 @@ module.exports = function() {
       });
     }); // end of `updateApp`
 
-    model.method('getApp', (obj, userData) => {
+    model.method('getApp', (obj, userData, params) => {
+      debug('getApp', obj, userData, params);
       return new Promise((resolve, reject) => {
-        model.checkGetApp(obj, userData).then(validQuery => {
+        model.checkGetApp(obj, userData, params).then(validQuery => {
+          debug('getApp:query', validQuery);
           let appNode = M.model('cope/app').node(validQuery);
           appNode.fetchData().next(() => {
             if (appNode.nodeId()) {
@@ -189,11 +191,12 @@ module.exports = function() {
       });
     }); // end of `getApp`
 
-    model.method('getAllApps', (obj, userData) => {
+    model.method('getAllApps', (obj, userData, params) => {
       return new Promise((resolve, reject) => {
-        model.checkGetAllApps(obj, userData).then(validQuery => {
-          debug(validQuery);
-          if (validQuery.appId || validQuery.appDomain) {
+        model.checkGetAllApps(obj, userData, params).then(validQuery => {
+          debug('getAllApps', validQuery);
+          if (typeof validQuery == 'string'  // nodeId
+            || (validQuery && validQuery.appId)) {
             model.getApp(validQuery).then(appData => {
               resolve(appData);
             }).catch(err => {
@@ -316,8 +319,9 @@ module.exports = function() {
       }); // end of Promise
     }); // end of `checkUpdateApp`
 
-    model.method('checkGetApp', (obj, userData) => {
+    model.method('checkGetApp', (obj, userData, params) => {
       return new Promise((resolve, reject) => {
+        debug('checkGetApp', params);
         let appId = obj && obj.appId;
         if (typeof appId == 'string') {
           resolve({ appId: appId });
@@ -327,9 +331,20 @@ module.exports = function() {
       });
     }); // end of `checkGetApp`
     
-    model.method('checkGetAllApps', (obj, userData) => {
+    model.method('checkGetAllApps', (obj, userData, params) => {
       return new Promise((resolve, reject) => {
-        resolve(obj);
+        if (params && params.hostname) {
+          let appNode = model.node({ appHost: params.hostname });
+          appNode.fetchData().next(() => {
+            if (appNode.nodeId()) {
+              resolve(appNode.nodeId()); 
+            } else {
+              resolve(obj);
+            }
+          });
+        } else {
+          resolve(obj);
+        }
       });
     }); // end of `checkGetAllApps`
   }); // end of "cope/app"
@@ -413,6 +428,7 @@ module.exports = function() {
                 } else {
                   resolve({
                     title: postData.value && postData.value.title,
+                    subtitle: postData.value && postData.value.subtitle,
                     content: postData.value && postData.value.content,
                     createdAt: postData.createdAt,
                     updatedAt: postData.updatedAt
