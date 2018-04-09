@@ -75,7 +75,6 @@ V.createClass('App', vu => {
   ]); // end of App.dom
 
   vu.method('render', () => {
-    console.log('RENDER APP');
     cope.send('/app/get').then(res => {
       console.log(res);
       let v = res && res.data && res.data.value;

@@ -9,8 +9,31 @@ let M = cope.M;
 let hostname = cope.util.hostname;
 
 router.all('*', function(req, res, next) {
-  debug('HOST = ' + hostname(req));
-  next();
+  let appHost = hostname(req);
+  if (req.session) {
+    if (!req.session.appUserData) {
+      req.session.appUserData = {};
+    }
+    if (appHost && !req.session.appUserData[appHost]) {
+      let appNode = M.model('cope/app').node({ 'appHost': appHost });
+      appNode.fetchData().next(() => {
+        if (appNode.nodeId()) {
+          let v = appNode.snap.value();
+
+          // Init req.session.appUserData[appHost]
+          req.session.appUserData[appHost] = {
+            appId: v.appId,
+            appNodeId: appNode.nodeId()
+          };
+          next();
+        }
+      });
+    } else {
+      next();
+    }
+  } else {
+    debug('[ERR] failed to access req.session');
+  }
 });
 
 /*********** 
@@ -65,7 +88,13 @@ let setAPI = function(method, apiPath, modelName, modelMethod) {
     userData.appUserData = req.session && req.session.appUserData || null;
 
     let params = {};
-    params.hostname = hostname(req);
+    let appHost = hostname(req);
+    if (appHost) {
+      params.hostname = appHost;
+      params.appHost = appHost;
+      params = Object.assign(params, req.session.appUserData[hostname(req)]);
+    }
+    debug(apiPath + ': params', params);
 
     M.model(modelName)[modelMethod](obj, userData, params)
       .then(data => {
@@ -82,7 +111,8 @@ setAPI('post', '/profile/get', 'cope/user', 'getProfile');
 
 setAPI('post', '/app/add', 'cope/app', 'addApp');
 setAPI('post', '/app/del', 'cope/app', 'delApp');
-setAPI('post', '/app/get', 'cope/app', 'getAllApps');
+setAPI('post', '/app/get', 'cope/app', 'getApp');
+setAPI('post', '/app/all', 'cope/app', 'getAllApps');
 setAPI('post', '/app/update', 'cope/app', 'updateApp'); 
 
 setAPI('post', '/post/add', 'cope/post', 'addPost');
@@ -102,6 +132,7 @@ router.post('/account/me', function(req, res, next) {
 
 router.post('/account/signin', function(req, res, next) {
   //apis.set('post', '/u/signin', 'users', 'signIn');
+  debug('asdasdadas');
   M.model('cope/user').signIn(req.body).then(data => {
     if (typeof req.session == 'object' && data) {
       req.session.copeUserData = data;

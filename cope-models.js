@@ -325,26 +325,30 @@ module.exports = function() {
         let appId = obj && obj.appId;
         if (typeof appId == 'string') {
           resolve({ appId: appId });
-        } else {
+        } else if (obj) {
           resolve(obj);
+        } else if (!obj && params && params.appNodeId) {
+          resolve(params.appNodeId);
         }
       });
     }); // end of `checkGetApp`
     
     model.method('checkGetAllApps', (obj, userData, params) => {
       return new Promise((resolve, reject) => {
-        if (params && params.hostname) {
-          let appNode = model.node({ appHost: params.hostname });
-          appNode.fetchData().next(() => {
-            if (appNode.nodeId()) {
-              resolve(appNode.nodeId()); 
-            } else {
-              resolve(obj);
-            }
-          });
-        } else {
-          resolve(obj);
-        }
+        //if (!obj && params && params.appNodeId) {
+          //let appNode = model.node(params.appNodeId);
+          //appNode.fetchData().next(() => {
+          //  if (appNode.nodeId()) {
+          //    resolve(appNode.nodeId()); 
+          //  } else {
+          //    resolve(obj);
+          //  }
+          //});
+          //resolve(params.appNodeId);
+        //} else {
+        //  resolve(obj);
+        //}
+        resolve(obj);
       });
     }); // end of `checkGetAllApps`
   }); // end of "cope/app"
@@ -392,9 +396,9 @@ module.exports = function() {
       });
     }); // end of `delPost`
 
-    model.method('getPost', (obj, userData) => {
+    model.method('getPost', (obj, userData, params) => {
       return new Promise((resolve, reject) => {
-        model.checkGetPost(obj, userData).then(valid => {
+        model.checkGetPost(obj, userData, params).then(valid => {
           let postNode = model.node(valid.query);
           postNode.fetchData().fetchLinks().next(() => {
             if (postNode.nodeId()) {
@@ -402,17 +406,16 @@ module.exports = function() {
               let links = postData && postData.links;
               let isCreator = false;
 
-              if (postData && postData.value && postData.value.content) {
-                try {
-                  if (typeof postData.value.content != 'string') {
-                    postData.value.content = JSON.stringify(postData.value.content);
-                  }
-                } catch (err) {
-                  // TBD
-                  reject(err);
-                  return;
-                }
-              }
+              //if (postData && postData.value && postData.value.content) {
+              //  try {
+              //    if (typeof postData.value.content != 'string') {
+              //      postData.value.content = JSON.stringify(postData.value.content);
+              //    }
+              //  } catch (err) {
+              //    reject(err);
+              //    return;
+              //  }
+              //}
 
               links.map(x => {
                 if (x.name == 'postCreator' 
@@ -669,7 +672,7 @@ module.exports = function() {
       }); // end of Promise
     }); // end of `checkDelPost`
 
-    model.method('checkGetPost', (obj, userData) => {
+    model.method('checkGetPost', (obj, userData, params) => {
       return new Promise((resolve, reject) => {
         let postId = obj.postId;
         let query = {};

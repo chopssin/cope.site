@@ -69,7 +69,7 @@ V.createClass('CopeHome', vu => {
 
   vu.method('loadApps', () => {
     vu.$('@apps').html('');
-    cope.send('/app/get').then(res => {
+    cope.send('/app/all').then(res => {
       let apps = [];
       let data = res && res.data;
       if (data) {
