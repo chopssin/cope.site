@@ -93,7 +93,7 @@ V.createClass('App', vu => {
 
       if (Array.isArray(postIds)) {
         vu.$('@posts').html('');
-        vu.set('postIds', postIds);
+        //vu.set('postIds', postIds);
         postIds.map(pid => {
           V.build('PostPreview', {
             sel: vu.sel('@posts'),

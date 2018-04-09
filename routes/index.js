@@ -31,8 +31,8 @@ router.get('/post/:postId', function(req, res) {
     debug('Requesting page on ' + appHost);
     res.render('post', { postId: postId });
   } else {
-    debug('Requesting Cope');
-    res.render('index', { title: 'Cope' });
+    debug('Redirecting to Cope');
+    res.redirect('/');
   }
 });
 
