@@ -1,5 +1,6 @@
-let G = require('./cope').G;
-let M = require('./cope').M;
+const cope = require('./cope');
+const G = cope.G;
+const M = cope.M;
 let debug = require('debug')('cope.site:cope-models');
 
 module.exports = function() {
@@ -444,26 +445,32 @@ module.exports = function() {
       });
     }); // end of `getPost`
 
-    model.method('getPostIds', (obj, userData) => {
+    model.method('getPostIds', (obj, userData, params) => {
+          debug('getPostIds', obj, userData, params);
       return new Promise((resolve, reject) => {
-        model.checkGetPostIds(obj, userData).then(valid => {
-          if (valid.linksQuery) {
-            G.findLinks(valid.linksQuery).then(links => {
-              G.findNodes(links.map(link => {
-                return link.source;
-              })).then(nodesData => {
-                let postIds = [];
-                debug('nodesData', nodesData);
-                for (let nodeId in nodesData) {
-                  let data = nodesData[nodeId];
-                  if (data && data.value && data.value.postId) {
-                    postIds = postIds.concat(data.value.postId);
-                  }
-                }
-                resolve(postIds);
-              }); // end of G.findNodes ...
-            }); // end of model.findLinks ...
+        model.checkGetPostIds(obj, userData, params).then(valid => {
+          let posts = model.sub();
+          debug('getPostIds:valid', valid);
+          if (valid.copeUserNodeId) {
+            posts = posts.sub('postCreator', null, valid.copeUserNodeId);
           }
+          if (valid.appNodeId) {
+            posts = posts.sub('app', null, valid.appNodeId);
+          }
+          posts.then(postNodeIds => {
+            debug(postNodeIds);
+            G.findNodes(postNodeIds).then(nodesData => {
+              let postIds = [];
+
+              for (let nodeId in nodesData) {
+                let data = nodesData[nodeId];
+                if (data && data.value && data.value.postId) {
+                  postIds = postIds.concat(data.value.postId);
+                }
+              }
+              resolve(postIds);
+            }); 
+          }); // end of posts.then
         }); // end of model.checkGetPostIds ...
       }); // end of Promise
     }); // end of `getAllPostIds`
@@ -688,7 +695,36 @@ module.exports = function() {
       }); // end of Promise
     }); // end of `checkGetPost`
 
-    model.method('checkGetPostIds', (obj, userData) => {
+    model.method('checkGetPostIds', (obj, userData, params) => {
+      let queue = cope.util.makeQueue();
+      let appId = (params && params.appId)
+        || (obj && obj.appId);
+      let copeUserNodeId = userData 
+        && userData.copeUserData 
+        && userData.copeUserData.nodeId;
+        
+      return new Promise((resolve, reject) => {
+        let valid = {};
+        if (appId) {
+          queue.add(() => {
+            let appNode = M.model('cope/app').node({ 'appId': appId });
+            appNode.fetchData().next(() => {
+              if (appNode.nodeId()) {
+                valid.appNodeId = appNode.nodeId();
+              }
+              queue.next();
+            });
+          })
+        }
+        if (copeUserNodeId) {
+          queue.add(() => {
+            valid.copeUserNodeId = copeUserNodeId;
+            resolve(valid);
+          });
+        }
+      });
+
+      /*
       let nodesQuery = {};
       let linksQuery = {};
       // TBD: validate the query object
@@ -705,7 +741,14 @@ module.exports = function() {
         linksQuery['$name'] = 'app';
       }
 
+
+
+      // TBD
+
       return new Promise((resolve, reject) => {
+        resolve(valid);
+        */
+        /*
         if (linksQuery['$target'] 
           || (linksQuery['$name'] == 'app')) {
           resolve({
@@ -713,8 +756,8 @@ module.exports = function() {
           });
         } else {
           reject('Require signed-in Cope user');
-        }
-      }); // end of Promise
+        }*/
+      //}); // end of Promise
     }); // end of `checkGetPostIds`
   }); // end of "cope/post"
 

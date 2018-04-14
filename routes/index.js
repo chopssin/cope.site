@@ -8,7 +8,9 @@ let hostname = cope.util.hostname;
 
 router.all('*', function(req, res, next) {
   // TBD:
-  //   CORS issue
+  //   1. CORS issue
+  //   2. Rewrite the path to <appHost> + <URL>
+  debug('Requesting page');
   next();
 });
 

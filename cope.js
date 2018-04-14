@@ -767,6 +767,84 @@ module.exports = function() {
         }
         return cope.G.findNodes(q);
       }; // end of modelAPI.findNodes
+
+      modelAPI.sub = function(a, b, c) {
+        let subAPI = {};
+        let subset = null;
+        let links = null;
+        let queue = cope.util.makeQueue();
+
+        subAPI.sub = function(linkName, srcId, tarId) {
+          if (typeof linkName != 'string'
+            || (Array.isArray(links) && links.length < 1)) {
+            // It's an empty set: needless to carry on
+          } else {
+            // At most one of srcId or tarId could be used
+            // e.g. 
+            //   model.sub('post', 'someUserId')
+            //   model.sub('creator', null, 'somePostId')
+            let q = {};
+            q['$name'] = linkName;
+            if (typeof tarId == 'string') {
+              q['$target'] = tarId;
+              // resulting nodes would be the sources
+            } else if (typeof srcId == 'string') {
+              q['$source'] = srcId;
+              // resulting nodes would be the targets
+            }
+
+            if (!links) {
+              // Init the subset
+              queue.add(() => {
+                subset = [];
+                cope.G.findLinks(q).then(resultLinks => {
+                  links = resultLinks;
+                  if (q['$target']) {
+                    subset = links.map(k => k.source);
+                  } else if (q['$source']) {
+                    subset = links.map(k => k.target);
+                  }
+                  queue.next();
+                });
+              }); // end of queue.add
+
+            } else {
+              // Filter the subset
+              queue.add(() => {
+                let tmp = [];
+                subset = [];
+                links.map(link => {
+                  if (q['$target'] && (q['$target'] == link.target)) {
+                    tmp = tmp.concat(link);
+                    subset = subset.concat(link.source);
+                  } else if (q['$source'] && (q['$source'] == link.source)) {
+                    tmp = tmp.concat(link); 
+                    subset = subset.concat(link.target);
+                  }
+                });
+                links = tmp;
+                queue.next();
+              }); // end of queue.add
+            } // end of else
+          } // end of else
+          return subAPI;
+        }; // end of subAPI.sub
+
+        subAPI.then = function(cb) {
+          // fetch nodes' data
+          queue.add(() => {
+            if (typeof cb == 'function') {
+              cb(subset, links);
+            }
+          });
+        };
+
+        if (typeof a  == 'string') {
+          return subAPI.sub(a, b, c);
+        } else {
+          return subAPI;
+        }
+      }; // end of modelAPI.sub
  
       modelAPI.method = function(name, fn) {
         if (!modelAPI[name] && (typeof fn == 'function')) {

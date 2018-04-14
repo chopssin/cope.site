@@ -57,12 +57,12 @@ app.use(function (req, res, next) {
 app.set('sess', sess);
 app.use(sess);
 
-app.use('/', routes);
 app.use('/api', apiRoutes);
 app.use('/users', users);
 if (app.get('env') === 'dev') {
   app.use('/dev', devRoutes);
 }
+app.use('/', routes);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

@@ -159,8 +159,8 @@ V.createClass('Account', vu => {
     if (!u) {
       return [
         { 'div': [
-          { 'input@email(type="text" placeholder="Email")': '' },
-          { 'input@pwd(type="text" placeholder="Password")': '' },
+          { 'input@email(type="text" placeholder="Email" value="chops@mail.com")': '' },
+          { 'input@pwd(type="text" placeholder="Password" value="1234")': '' },
           { 'button@signInBtn': 'Sign In' }, 
           { 'button@signUpBtn': 'Sign Up' }] 
         }
@@ -402,7 +402,7 @@ V.createClass('PostsSec', vu => {
   }); // end of PostsSec.mode
 
   vu.method('listPosts', () => {
-    cope.send('/post/all').then(res => {
+    cope.send('/post/all', { appId: vu.get('appId') }).then(res => {
       vu.$('@posts').html('');
       if (Array.isArray(res && res.data)) {
         res.data.map(postId => {
