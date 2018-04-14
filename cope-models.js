@@ -14,9 +14,6 @@ module.exports = function() {
           model.createNode().then(nodeId => {
             let newUserNode = model.node(nodeId);
             valid.userId = nodeId.slice(2, 7);
-
-            //debug('New account', nodeId);
-            //debug('New account input', valid);
             newUserNode.val(valid).next(() => {
               if (newUserNode.nodeId() && newUserNode.snap.data()) {
                 resolve(newUserNode.snap.data());
@@ -336,19 +333,6 @@ module.exports = function() {
     
     model.method('checkGetAllApps', (obj, userData, params) => {
       return new Promise((resolve, reject) => {
-        //if (!obj && params && params.appNodeId) {
-          //let appNode = model.node(params.appNodeId);
-          //appNode.fetchData().next(() => {
-          //  if (appNode.nodeId()) {
-          //    resolve(appNode.nodeId()); 
-          //  } else {
-          //    resolve(obj);
-          //  }
-          //});
-          //resolve(params.appNodeId);
-        //} else {
-        //  resolve(obj);
-        //}
         resolve(obj);
       });
     }); // end of `checkGetAllApps`
@@ -406,17 +390,6 @@ module.exports = function() {
               let postData = postNode.snap.data();
               let links = postData && postData.links;
               let isCreator = false;
-
-              //if (postData && postData.value && postData.value.content) {
-              //  try {
-              //    if (typeof postData.value.content != 'string') {
-              //      postData.value.content = JSON.stringify(postData.value.content);
-              //    }
-              //  } catch (err) {
-              //    reject(err);
-              //    return;
-              //  }
-              //}
 
               links.map(x => {
                 if (x.name == 'postCreator' 
@@ -498,7 +471,6 @@ module.exports = function() {
       }); // end of Promise
     }); // end of `checkAddPost`
 
-    // TBD: postScope
     model.method('checkUpdatePost', (obj, userData) => {
       return new Promise((resolve, reject) => {
         let postNodeId = null;
@@ -539,117 +511,20 @@ module.exports = function() {
             postNodeId = postNode.nodeId();
             G.findLinks({
               '$name': 'postCreator',
-              '$source': postNodeId
+              '$source': postNodeId,
+              '$target': copeUserNodeId
             }).then(links => {
-              debug('dlaskjdlakjd', links, copeUserNodeId, updates);
-              if (links 
-                && links.length === 1
-                && links[0].target == copeUserNodeId) {
+              if (links && links.length == 1) {
                 resolve({
                   query: postNodeId,
                   updates: updates
                 });
               }
-            }); // end of G.findLinks ...
+            });
           } // end of if
         }); // end of postNode.fetchData ...
       }); // end of Promise
     }); // end of `checkUpdatePost`
-      // { 
-      //   header?, text?, linkURL?, 
-      //   (imgsrc | vidsrc | audsrc)?,
-      //   insertedItemId?, 
-      //   insertedPostId?,
-      //   postId -> for query
-      // }
-      /*
-      return new Promise((resolve, reject) => {
-        valid = {};
-
-        let copeUserNodeId = userData 
-          && userData.copeUserData 
-          && userData.copeUserData.nodeId
-          || null;
-        if (!copeUserNodeId) {
-          reject('[ERR] Require signed-in Cope user.');
-          return;
-        } else {
-          valid.copeUserNodeId = copeUserNodeId;
-        }
-        
-        let updateAt = parseInt(obj.updateAt, 10); 
-        let insertAt = parseInt(obj.insertAt, 10);
-        let idx = parseInt(obj.idx, 10);
-        let moveTo = parseInt(obj.moveTo, 10);
-
-        if (typeof obj.postId == 'string') {
-          valid.query = {};
-          valid.query.postId = obj.postId;
-        } else {
-          reject('[ERR] checkUpdatePost: invalid input that found no `postId`', obj);
-          return;
-        }
-
-        if (!isNaN(updateAt)) {
-          valid.cmd = 'update';
-          valid.idx = updateAt;
-        } else if (!isNaN(insertAt)) {
-          valid.cmd = 'insert';
-          valid.idx = insertAt;
-        } else if (!isNaN(idx) && !isNaN(moveTo)) {
-          valid.cmd = 'move';
-          valid.idx = idx;
-          valid.moveTo = moveTo;
-          resolve(valid);
-          return;
-        }
-
-        // Deal with elem to update
-        let elem = {};
-        elem.text = (typeof obj.text == 'string')
-          ? obj.text 
-          : '';
-        elem.header = (typeof obj.header == 'string')
-          ? obj.header
-          : '';
-        elem.linkURL = (typeof obj.linkURL == 'string')
-          ? obj.linkURL
-          : '';
-        
-        if (typeof obj.imgsrc == 'string') {
-          elem.imgsrc = obj.imgsrc;
-        } else if (typeof obj.vidsrc == 'string') {
-          elem.vidsrc = obj.vidsrc;
-        } else if (typeof obj.audsrc == 'string') {
-          elem.audsrc = obj.audsrc;
-        }
-
-        if (obj.insertedItemId) {
-          let itemNode = M.model('cope/item').node({ itemId: obj.itemId });
-          itemNode.fetchData().next(() => {
-            if (itemNode.nodeId()) {
-              elem.itemNodeId = itemNode.nodeId();
-              valid.elem = elem; 
-              resolve(valid);
-            }
-          });
-        } else if (obj.insertedPostId) {
-          let postNode = M.model('cope/post').node({ postId: obj.insertedPostId });
-          postNode.fetchData().next(() => {
-            if (postNode.nodeId()) {
-              elem.postNodeId = postNode.nodeId();
-              valid.elem = elem; 
-              resolve(valid);
-            }
-          });
-        } else {
-          valid.elem = elem;
-          resolve(valid);
-        }
-        return;
-      }); // end of Promise
-    }); // end of `checkUpdatePost`
-    */
 
     model.method('checkDelPost', (obj, userData) => {
       let copeUserNodeId = userData 
@@ -722,268 +597,9 @@ module.exports = function() {
             resolve(valid);
           });
         }
-      });
-
-      /*
-      let nodesQuery = {};
-      let linksQuery = {};
-      // TBD: validate the query object
-
-      // "Show my posts" by default
-      linksQuery = {};
-      linksQuery['$name'] = 'postCreator';
-      linksQuery['$target'] = userData
-        && userData.copeUserData 
-        && userData.copeUserData.nodeId;
-
-      if (obj && obj.appId) {
-        linksQuery = {};
-        linksQuery['$name'] = 'app';
-      }
-
-
-
-      // TBD
-
-      return new Promise((resolve, reject) => {
-        resolve(valid);
-        */
-        /*
-        if (linksQuery['$target'] 
-          || (linksQuery['$name'] == 'app')) {
-          resolve({
-            linksQuery: linksQuery
-          });
-        } else {
-          reject('Require signed-in Cope user');
-        }*/
-      //}); // end of Promise
+      }); // end of Promise
     }); // end of `checkGetPostIds`
   }); // end of "cope/post"
 
   return false;
 }();
-
-// +CopeUsers
-// +CopeApps
-//   app
-//     owner: <CopeUser>
-//     admins: { <CopeUser> }
-//     +members: { <appMember> }
-//     +groups: { <appGroup> }
-//     +followingships: { <fid>, <src>, <tar>, <direction>, ... }
-//     +messages: { <mid>, <u1>, <u2>, ... }
-//     +posts
-//     +items
-//     +reqs
-//     +homepage
-
-// The process of constructing an modeled node
-// 1. Input check callback
-// 2. Then use M's API to create or modify the node
-// 3. Call resolve or reject with results
-
-/* ---------------------------------------
-let makeModel = function(modelName) {
-  let funcs = {};
-
-  M.createModel(modelName, model => {
-
-    model.method('setValid', (method, func) => {
-      funcs['valid.' + method] = func;    
-    });
-
-    model.method('setMask', (method, func) => {
-      funcs['mask.' + method] = func;    
-    });
-
-    model.method('valid', (method, obj, userData) => {
-      return funcs['valid.' + method](obj, userData) 
-        || new Promise((resolve, reject) => {
-          resolve(obj);
-        });
-    });
-
-    model.method('mask', (method, obj, userData) => {
-      return funcs['mask.' + method](obj, userData)
-        || new Promise((resolve, reject) => {
-          resolve(obj);
-        });
-    });
-
-    // <model>.add
-    model.method('add', (obj, userData) => {
-      return new Promise((resolve, reject) => {
-        model.valid('add', obj, userData).then(validObj => {
-
-          // Create the modeled node
-          model.createNode().then(nodeId => {
-            let newNode = model.node(nodeId);
-            newNode
-              .val(validObj)
-              .fetchData().next(() => {
-                let masked = model.mask('add', newNode.snap.data(), userData);
-                resolve({ ok: true , data: masked });
-              });
-          });
-        }).catch(err => {
-          reject(err);
-        });
-        // end of valid
-      }); // end of Promise
-    }); // end of <model>.add
-
-    // <model>.set
-    // obj: {
-    //   nodeId || filter
-    //   value
-    // }
-    model.method('set', (obj, userData) => {
-      return new Promise((resolve, reject) => {
-        model.valid('set', obj, userData).then(validObj => {
-          model.node(obj.nodeId || obj.filter)
-            .newVal(obj.value).next(() => {
-              resolve({ ok: true });
-            });
-        }).catch(err => {
-          reject(err);
-        });
-        // end of valid
-      }); // end of Promise
-    }); // end of <model>.set
-
-    model.method('update', (obj, userData) => {
-      return new Promise((resolve, reject) => {
-        model.valid('update', obj, userData).then(validObj => {
-          model.node(obj.nodeId || obj.filter)
-            .val(obj.value).next(() => {
-              resolve({ ok: true });
-            });
-        }).catch(err => {
-          reject(err);
-        });
-        // end of valid
-      }); // end of Promise
-    }); // end of <model>.set
-
-    // <model>.del
-    model.method('del', (obj, userData) => {
-      return new Promise((resolve, reject) => {
-        model.valid('del', obj, userData).then(validObj => {
-
-          let n = model.node(obj.nodeId || obj.filter);
-          n.next(() => {
-            if (n.nodeId()) {
-              n.del().then(() => {
-                resolve({ ok: true });
-              });
-            } 
-          });
-
-        }).catch(err => {
-          reject(err);
-        });
-        // end of valid
-      }); // end of Promise
-    }); // end of <model>.del
-
-    // <model>.getOne
-    model.method('getOne', (obj, userData) => {
-      return new Promise((resolve, reject) => {
-        model.valid('getOne', obj, userData).then(validObj => {
-
-          let n = model.node(validObj.nodeId || validObj.filter);
-          n.fetch().next(() => {
-            if (n.nodeId()) {
-              resolve({ ok: true, data: model.mask('getOne', n.snap.data(), userData) });
-            } else {
-              resolve({ ok: false, data: null }); 
-            } 
-          });
-
-        }).catch(err => {
-          reject(err);
-        });
-        // end of valid
-      }); // end of Promise
-    }); // end of <model>.getOne
-
-    // <model>.getAll
-    model.method('getAll', (obj, userData) => {
-      return new Promise((resolve, reject) => {
-        model.valid('getAll', obj, userData).then(validObj => {
-          model.findNodes(validObj.filter).then(nodesDataObj => {
-            resolve({ ok: true, data: model.mask('getAll', nodesDataObj, userData) });
-          });
-        }).catch(err => {
-          reject(err);
-        });
-        // end of valid
-      }); // end of Promise
-    }); // end of <model>.getAll
-  }); // end of M.createModel
-}; // end of makeModel
-
-module.exports = function() {
-  makeModel('cope/user');
-  makeModel('cope/app');
-  makeModel('cope/member');
-  makeModel('cope/group');
-  makeModel('cope/post');
-  makeModel('cope/item');
-  makeModel('cope/req');
-
-  // *** cope/user ***
-  M.model('cope/user').setValid('add', obj => {
-    return new Promise((resolve, reject) => {
-      let email = obj.email;
-      let pwd = obj.pwd;
-      let check = M.model('copeUser').node({ 'email': email });
-      check.next(() => {
-        if (!check.nodeId() && (typeof pwd == 'string')) { 
-          resolve({
-            email: email,
-            pwd: pwd
-          }); 
-        }
-      });
-    });
-  }); // end of validation of copeUsers.add
-
-  M.model('cope/user').method('signIn', obj => {
-    let userNode = M.model('cope/user').node(obj);
-    userNode.val({
-      'signedIn': true
-    }).fetchData().then(() => {
-      
-    });
-  }); // end of validation of copeUsers.profile
-
-  // *** cope/app ***
-  M.model('cope/app').setValid('add', obj => {
-    return new Promise((resolve, reject) => {
-      let appId = obj.appId;
-      let ownerId = obj.ownerId;          
-      if (!appId || !ownerId) { reject('[copeApp] no appId'); return; }
-      let checkNode = M.model('copeApp').node({ 'appId': appId });
-      checkNode.next(() => {
-        if (checkNode.nodeId()) { 
-          reject('[copeApp] app already existed'); 
-        } else {
-          let u = M.model('copeUser').node({ 'userId': ownerId });
-          u.next(() => {
-            if (u.nodeId()) {
-              
-              // Resolve with valid obj
-              resolve({
-                appId: appId,
-                ownerId: ownerId
-              });
-            }
-          });
-        }
-      }); // end of checkNode
-    }); // end of Promise
-  }); // end of validation of copeApps.add
-  ----------------------- */
-
