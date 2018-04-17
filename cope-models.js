@@ -319,14 +319,16 @@ module.exports = function() {
 
     model.method('checkGetApp', (obj, userData, params) => {
       return new Promise((resolve, reject) => {
-        debug('checkGetApp', params);
+        debug('checkGetApp', obj, userData, params);
         let appId = obj && obj.appId;
         if (typeof appId == 'string') {
           resolve({ appId: appId });
-        } else if (obj) {
-          resolve(obj);
-        } else if (!obj && params && params.appNodeId) {
+        } else if (params && params.appNodeId) {
           resolve(params.appNodeId);
+        } else if (typeof obj == 'object' && Object.keys(obj).length > 0) {
+          resolve(obj);
+        } else {
+          debug('[ERR] checkGetApp(obj, userData, params): invalid obj');
         }
       });
     }); // end of `checkGetApp`
@@ -594,9 +596,12 @@ module.exports = function() {
         if (copeUserNodeId) {
           queue.add(() => {
             valid.copeUserNodeId = copeUserNodeId;
-            resolve(valid);
+            queue.next();
           });
         }
+        queue.add(() => {
+          resolve(valid);
+        });
       }); // end of Promise
     }); // end of `checkGetPostIds`
   }); // end of "cope/post"
