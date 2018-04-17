@@ -1,4 +1,4 @@
-let copeHosts = ['localhost', 'cope-site'];
+let copeHosts = ['localhost', 'cope-site', 'cope-ai.herokuapp.com'];
 
 let debug = require('debug')('cope.site:cope');
 let MongoClient = require('mongodb').MongoClient;
