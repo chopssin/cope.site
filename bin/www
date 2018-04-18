@@ -57,9 +57,9 @@ io.on('connection', function(socket) {
 /**
  * Integrate MongoDB
  */
-cope.useMongoDb({
-  url: 'mongodb://localhost:27017/testDB'
-});
+//cope.useMongoDb({
+//  url: 'mongodb://localhost:27017/testDB'
+//});
 
 
 /**
