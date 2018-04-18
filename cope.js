@@ -6,7 +6,7 @@ let ObjectId = require('mongodb').ObjectId;
 
 module.exports = function() {
   let test = 0;
-  let MONGODB_URL = 'mongodb://127.0.0.1:27017/testDB';
+  let MONGODB_URL = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testDB';
 
   // db = <obj>dbAPI: {
   //   - useMongo = (<func>callback) => false
