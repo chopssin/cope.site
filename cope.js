@@ -17,10 +17,13 @@ module.exports = function() {
     let dbAPI = {};
 
     dbAPI.useMongo = function(callback) {
+      console.log('useMongo: connecting...');
       MongoClient.connect(MONGODB_URL, (err, db) => {
         if (!err && db) {
+          console.log('useMongo:db success');
           callback(db);
         } else {
+          console.log('useMongo:err', err);
           debug('[ERR] db.useMongo(callback): failed to connect to MongoDB');
           debug('[ERR] db.useMongo(callback): stop calling callback');
           debug('[ERR] db.useMongo(callback): url = ' + MONGODB_URL);

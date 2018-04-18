@@ -95,7 +95,6 @@ let setAPI = function(method, apiPath, modelName, modelMethod) {
       params = Object.assign(params, req.session.appUserData[hostname(req)]);
     }
     debug(apiPath + ': params', params);
-    console.log(apiPath + ': params', params);
 
     M.model(modelName)[modelMethod](obj, userData, params)
       .then(data => {

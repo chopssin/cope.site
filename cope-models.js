@@ -8,9 +8,15 @@ module.exports = function() {
   // "cope/user"
   M.createModel('cope/user', model => {
     model.method('addAccount', (obj, userData) => {
+      
+      console.log('cope/user:addAcount', obj, userData);
+      
       return new Promise((resolve, reject) => {
         //check('cope/user.addAccount', obj, userData).then(valid => {
         model.checkAddAccount(obj, userData).then(valid => {
+      
+          console.log('cope/user:addAcount', valid);
+          
           model.createNode().then(nodeId => {
             let newUserNode = model.node(nodeId);
             valid.userId = nodeId.slice(2, 7);
