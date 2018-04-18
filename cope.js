@@ -18,6 +18,7 @@ module.exports = function() {
 
     dbAPI.useMongo = function(callback) {
       console.log('useMongo: connecting ' + MONGODB_URL);
+      console.log('ENV M_URI = ' + process.env.MONGODB_URI);
       MongoClient.connect(MONGODB_URL, (err, db) => {
         if (!err && db) {
           console.log('useMongo:db success');
@@ -881,13 +882,13 @@ module.exports = function() {
     return modelManagerAPI;
   }(); // end of cope.M
 
-  cope.useMongoDb = function(params) {
-    if (!params) {
-      params = {};
-    }
-    MONGODB_URL = params.url;
-    return false;
-  }; // end of cope.useMongoDb
+  //cope.useMongoDb = function(params) {
+  //  if (!params) {
+  //    params = {};
+  //  }
+  //  MONGODB_URL = params.url;
+  //  return false;
+  //}; // end of cope.useMongoDb
 
   cope.useSocketIO = function(socket) {
     if (!socket) {
