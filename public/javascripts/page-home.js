@@ -5,7 +5,7 @@ let DS = V.dataStore();
 
 V.createClass('Cope', vu => {
   vu.dom(data => [
-    { 'div@navbar.navbar-wrap': '' },
+    { 'nav@navbar.navbar': '' },
     { 'div@main.main-wrap': '' }
   ]);
 
@@ -136,7 +136,7 @@ V.createClass('Navbar', vu => {
   let logoOnClickCb;
 
   vu.dom(data => [
-    { 'div@logo.logo': 'Cope' }
+    { 'div@logo.navbar-brand[cursor:pointer]': 'Cope' }
   ]);
 
   vu.method('logoOnClick', cb => {
@@ -216,14 +216,17 @@ V.createClass('Account', vu => {
 
 V.createClass('AppLayout', vu => {
   vu.dom(data => [
-    { 'div': data.appName || data.value.appName },
-    { 'div.sidebar': [
-      { 'ul': [
-        { 'li@postsBtn': 'Posts' },
-        { 'li@pagesBtn': 'Pages' },
-        { 'li@storeBtn': 'Store' },
-        { 'li@upgradeBtn': 'Upgrade' },
-        { 'li@settingsBtn': 'Settings' }] 
+    { 'nav.navbar.navbar-expand-sm': [
+      { '.navbar-brand': data.appName || data.value.appName || 'App' },
+      { 'button.navbar-toggler@togglerBtn': [{ 'span.navbar-toggler-icon': '三' }] },
+      { '@collapse.collapse.navbar-collapse': [
+        { 'ul.navbar-nav.mr-auto.mt-2.mt-lg-0': [
+          { 'li@postsBtn.nav-item': [{ '.nav-link.active': 'Posts'}] },
+          { 'li@pagesBtn.nav-item': [{ '.nav-link': 'Pages' }] },
+          { 'li@storeBtn.nav-item': [{ '.nav-link': 'Store' }] },
+          { 'li@upgradeBtn.nav-item': [{ '.nav-link': 'Upgrade' }] },
+          { 'li@settingsBtn.nav-item': [{ '.nav-link': 'Settings' }] }] 
+        }] 
       }] 
     },
     { 'div.main-content': [
@@ -236,6 +239,8 @@ V.createClass('AppLayout', vu => {
   ]);
 
   vu.method('show', sec => {
+    vu.$('ul').find('.nav-link').removeClass('active');
+    vu.$('@' + sec + 'Btn').find('.nav-link').addClass('active');
     vu.$('.main-content > section').hide();
     vu.$('@' + sec).show();
     if (sec == 'posts') {
@@ -263,7 +268,14 @@ V.createClass('AppLayout', vu => {
       && data.appId 
       || null);
 
-    vu.show('posts');
+    vu.$('@togglerBtn').on('click', evt => {
+      vu.$('@collapse').toggleClass('collapse');
+    });
+
+    vu.$('@collapse').find('.nav-item').on('click', evt => {
+      vu.$('@collapse').addClass('collapse');
+    });
+
     [ 'posts', 
       'pages', 
       'store', 
@@ -273,6 +285,8 @@ V.createClass('AppLayout', vu => {
           vu.show(sec);
         });
       });
+
+    vu.show('posts');
   });
 }); // end of `AppLayout`
 
