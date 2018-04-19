@@ -230,11 +230,11 @@ V.createClass('AppLayout', vu => {
       }] 
     },
     { 'div.main-content.row': [
-      { 'section@posts.col': 'Posts' },
-      { 'section@pages.col': 'Pages' },
-      { 'section@store.col': 'Store' },
-      { 'section@upgrade.col': 'Upgrade' },
-      { 'section@settings.col': 'Settings' }]
+      { 'section@posts.col-12': 'Posts' },
+      { 'section@pages.col-12': 'Pages' },
+      { 'section@store.col-12': 'Store' },
+      { 'section@upgrade.col-12': 'Upgrade' },
+      { 'section@settings.col-12': 'Settings' }]
     }
   ]);
 
