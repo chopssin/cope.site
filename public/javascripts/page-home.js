@@ -585,7 +585,7 @@ V.createClass('Post', vu => {
       innerDOM.div = innerDOM.div.concat({ 'h4': x.header }); 
     } 
     if (x.text && x.text.length > 0) {
-      innerDOM.div = innerDOM.div.concat({ 'p': x.text }); 
+      innerDOM.div = innerDOM.div.concat({ 'p': x.text.replace(/\n/g, '<br>') }); 
     }
     if (innerDOM.div.length < 1) {
       innerDOM = '';
