@@ -6,13 +6,15 @@ let DS = V.dataStore();
 V.createClass('Cope', vu => {
   vu.dom(data => [
     { 'nav@navbar.navbar': '' },
-    { 'div@main.main-wrap': '' }
+    { 'div@main.container': '' }
   ]);
 
   vu.init(data => {
     let navbar = V.build('Navbar', {
       sel: vu.sel('@navbar')
     });
+
+    DS.set('Navbar', navbar);
 
     navbar.logoOnClick(() => {
       DS.set('CopeHome', V.build('CopeHome', {
@@ -29,8 +31,8 @@ V.createClass('Cope', vu => {
 V.createClass('CopeHome', vu => {
   vu.dom(data => [
     //{ 'div@navbar.navbar-wrap': '' },
-    { 'div@account': '' },
-    { 'div.home-wrap': [
+    { 'div.col-12@account': '' },
+    { 'div.col-12@home-wrap': [
       { 'div@apps': '' },
       { 'div@newAppSec[p:16px;mt:16px;b:2px solid #333;bgColor:#fff]': [
           { 'input@newAppNameInput(type="text" placeholder="App Name")': '' },
@@ -54,14 +56,14 @@ V.createClass('CopeHome', vu => {
   }); // end of CopeHome.signInCheck
 
   vu.method('openHome', () => {
-    vu.$('.home-wrap').hide();
+    vu.$('@home-wrap').hide();
     V.build('Account', {
       sel: vu.sel('@account')
     });
 
     vu.signInCheck(signedIn => {
       if (signedIn) {
-        vu.$('.home-wrap').show();
+        vu.$('@home-wrap').show();
         vu.loadApps();
       } 
     });
@@ -95,10 +97,15 @@ V.createClass('CopeHome', vu => {
 
       if (appId) {
         vu.$('@apps').append(V.dom([
-          [ 'div@app-' + appId + '[p:16px;mt:16px;b:2px solid #333]', appName ]
+          [ 'div.col-12@app-' + appId + '[p:16px;mt:16px;b:2px solid #333]', appName ]
         ], vu.id));
 
         vu.$('@app-' + appId).on('click', evt => {
+          try {
+            DS.get('Navbar').setApp(appData);
+          } catch (err) {
+            console.error(err);
+          }
           vu.openApp(appData);
         });
       }
@@ -134,10 +141,73 @@ V.createClass('CopeHome', vu => {
 
 V.createClass('Navbar', vu => {
   let logoOnClickCb;
+  let sectionOnClickCb;
 
   vu.dom(data => [
-    { 'div@logo.navbar-brand[cursor:pointer]': 'Cope' }
+    { 'div.navbar-brand[cursor:pointer]': [
+      { 'span@logo': 'Cope' },
+      { 'span@appName': '' }] 
+    },
+    { 'button.d-block.d-md-none.navbar-toggler(type="button")@appSecToggler': [
+      { 'span.navbar-toggler-icon': '三' }] 
+    }
   ]);
+
+  vu.method('setApp', appData => {
+    if (!appData) {
+      return;
+    }
+
+    let v = appData;
+    if (v.value) {
+      v = v.value;
+    }
+
+    let appName = v.appName;
+    if (appName) {
+      vu.$('@appName').html(' | ' + appName);
+      vu.$('@appName').off('click').on('click', evt => {
+        try {
+          DS.get('CopeHome').openApp(appData);
+        } catch (err) {
+          console.error(err);
+        }
+      });
+
+      vu.$('@appSecToggler').after(V.dom([
+        { 'div.navbar-nav.collapse.navbar-collapse@app-nav': [
+          { 'div.navbar-item.h4@posts-item': 'Posts' },
+          { 'div.navbar-item.h4@pages-item': 'Pages' },
+          { 'div.navbar-item.h4@members-item': 'Members' },
+          { 'div.navbar-item.h4@store-item': 'Store' },
+          { 'div.navbar-item.h4@upgrade-item': 'Upgrade' },
+          { 'div.navbar-item.h4@settings-item': 'Settings' }]
+        }
+      ], vu.id));
+      [ 'posts', 
+        'pages',
+        'members',
+        'store',
+        'upgrade',
+        'settings' ].map(sec => {
+          vu.$('@' + sec + '-item').on('click', evt => {
+            console.log('aadad');
+            if (typeof sectionOnClickCb == 'function') {
+              sectionOnClickCb(sec);
+            }
+            vu.$('@app-nav').addClass('collapse');
+          });
+        });
+
+      vu.$('@appSecToggler').off('click').on('click', evt => {
+        vu.$('@app-nav').toggleClass('collapse');
+      });
+    } // end of if
+  }); // end of Navbar.setApp
+
+  vu.method('sectionOnClick', cb => {
+    sectionOnClickCb = cb;
+  });
 
   vu.method('logoOnClick', cb => {
     logoOnClickCb = cb;
@@ -145,11 +215,13 @@ V.createClass('Navbar', vu => {
 
   vu.init(data => {
     vu.$('@logo').on('click', evt => {
+      vu.$('@appName').html('');
+      vu.$('@app-nav').remove();
       if (typeof logoOnClickCb == 'function') {
         logoOnClickCb();
       }
-    })
-  });
+    });
+  }); // end of Navbar.init
 }); // end of `Navbar`
 
 V.createClass('Account', vu => {
@@ -216,7 +288,7 @@ V.createClass('Account', vu => {
 
 V.createClass('AppLayout', vu => {
   vu.dom(data => [
-    { 'nav.navbar.navbar-expand-sm': [
+    /*{ 'nav.navbar.navbar-expand-sm': [
       { '.navbar-brand': data.appName || data.value.appName || 'App' },
       { 'button.navbar-toggler@togglerBtn': [{ 'span.navbar-toggler-icon': '三' }] },
       { '@collapse.collapse.navbar-collapse': [
@@ -228,19 +300,33 @@ V.createClass('AppLayout', vu => {
           { 'li@settingsBtn.nav-item': [{ '.nav-link': 'Settings' }] }] 
         }] 
       }] 
-    },
-    { 'div.main-content.row': [
-      { 'section@posts.col-12': 'Posts' },
-      { 'section@pages.col-12': 'Pages' },
-      { 'section@store.col-12': 'Store' },
-      { 'section@upgrade.col-12': 'Upgrade' },
-      { 'section@settings.col-12': 'Settings' }]
+    },*/
+    { 'div.row': [
+      { 'div.col-md-2.d-none.d-md-block': [
+        { 'ul.mr-auto.mt-2.mt-lg-0': [
+          { 'li@postsBtn': [{ 'div': 'Posts'}] },
+          { 'li@pagesBtn': [{ 'div': 'Pages' }] },
+          { 'li@membersBtn': [{ 'div': 'Members' }] },
+          { 'li@storeBtn': [{ 'div': 'Store' }] },
+          { 'li@upgradeBtn': [{ 'div': 'Upgrade' }] },
+          { 'li@settingsBtn': [{ 'div': 'Settings' }] }] 
+        }] 
+      }, 
+      { 'div.main-content.col-md-10.col-xs-12': [
+        { 'section@posts.col-12': 'Posts' },
+        { 'section@pages.col-12': 'Pages' },
+        { 'section@members.col-12': 'Members' },
+        { 'section@store.col-12': 'Store' },
+        { 'section@upgrade.col-12': 'Upgrade' },
+        { 'section@settings.col-12': 'Settings' }]
+      }]
     }
   ]);
 
   vu.method('show', sec => {
-    vu.$('ul').find('.nav-link').removeClass('active');
-    vu.$('@' + sec + 'Btn').find('.nav-link').addClass('active');
+
+    //vu.$('ul').find('.nav-link').removeClass('active');
+    //vu.$('@' + sec + 'Btn').find('.nav-link').addClass('active');
     vu.$('.main-content > section').hide();
     vu.$('@' + sec).show();
     if (sec == 'posts') {
@@ -278,6 +364,7 @@ V.createClass('AppLayout', vu => {
 
     [ 'posts', 
       'pages', 
+      'members',
       'store', 
       'upgrade', 
       'settings'].map(sec => {
@@ -285,6 +372,14 @@ V.createClass('AppLayout', vu => {
           vu.show(sec);
         });
       });
+
+    try {
+      DS.get('Navbar').sectionOnClick(sec => {
+        vu.show(sec);
+      });
+    } catch (err) {
+      console.error(err);
+    }
 
     vu.show('posts');
   });
@@ -365,10 +460,20 @@ V.createClass('NewPostSec', vu => {
 
 V.createClass('PostsSec', vu => {
   vu.dom(data => [
-    { 'h3@h3': 'Posts' },
-    { '@newPostBtn[w:70px;bgColor:#44f;color:#fff;p:10px]': 'New post' },
-    { '@posts': '' },
-    { '@postEditor[none]': '' }
+    { '.row': [
+      { '.col-12': [
+        { 'h3@h3.mb-4': 'Posts' }]
+      },
+      { '.col-12': [
+        { 'div.mb-3@newPostBtn[cursor:pointer]': [{ 'span[bgColor:#0061ff;color:#fff;p:10px]': 'New post' }] }]
+      },
+      { '.col-12': [
+        { '@posts.card-columns': '' }]
+      },
+      { '.col-12': [
+        { '@postEditor[none]': '' }]
+      }]
+    }
   ]);
 
   vu.method('newPost', () => {
@@ -461,9 +566,13 @@ V.createClass('PostPreview', vu => {
   let onclick;
 
   vu.dom(data => [
-    { 'div[bgColor:#fff; mb:16px; p:16px]': [
-      { 'h3@title': '' },
-      { '@subtitle': '' }]
+    { 'div.card': [
+      { 'img@cover.card-img-top(alt="Card image cap")[none]': '' },
+      { '.card-body': [
+        { 'h5@title.card-title': '' },
+        { 'h6@subtitle.card-subtitle.mb-2.text-muted': '' },
+        { '@text.card-text': '' }] 
+      }]
     }
   ]);
 
@@ -472,16 +581,39 @@ V.createClass('PostPreview', vu => {
       'postId': vu.get('postId')
     }).then(res => {
       let v = res.data;
+      let imgsrc = '';
+      let previewText = '';
       if (v.value) { 
         v = v.value;
-        vu.$('@title').html(v.title || 'Untitled');
-        vu.$('@subtitle').html(v.subtitle || '');
 
         try {
+          // Get cover image
+          imgsrc = v.coverImgSrc || null;
+
+          // Parse content
           v.content = JSON.parse(v.content);
+
+          // Set previewText
+          if (v.content && v.content.length > 0) {
+            v.content.map(el => {
+              if (el && el.text && !previewText) {
+                previewText = el.text;
+              }
+            });
+          }
         } catch (err) {
+          console.error(err);
+          console.error(v);
           v.content = [];
+          previewText = '';
         }
+
+        if (imgsrc) { 
+          vu.$('@cover').prop('src', imgsrc).show();
+        }
+        vu.$('@title').html(v.title || 'Untitled');
+        vu.$('@subtitle').html(v.subtitle || '');
+        vu.$('@text').html(previewText);
         DS.set('post-' + vu.get('postId'), {
           value: {
             title: v.title || 'Untitled',
