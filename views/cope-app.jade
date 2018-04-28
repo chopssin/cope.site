@@ -1,0 +1,53 @@
+extends cope-nav
+
+block sidebar
+  .logo
+    a#app-name.simple-text.logo-normal
+  .sidebar-wrapper
+    ul.nav
+      li#li-posts.nav-item
+        a.nav-link(href = "/#{appId}/posts")
+          i.material-icons dashboard
+          p Posts
+      li#li-pages.nav-item
+        a.nav-link(href = "/#{appId}/pages")
+          i.material-icons dashboard
+          p Pages
+      li#li-members.nav-item
+        a.nav-link(href = "/#{appId}/members")
+          i.material-icons dashboard
+          p Members
+      li#li-store.nav-item
+        a.nav-link(href = "/#{appId}/store")
+          i.material-icons dashboard
+          p Store
+      li#li-settings.nav-item
+        a.nav-link(href = "/#{appId}/settings")
+          i.material-icons dashboard
+          p Settings
+      li#li-upgrade.nav-item
+        a.nav-link(href = "/#{appId}/upgrade")
+          i.material-icons dashboard
+          p Upgrade
+
+block navbarToggler
+  button.navbar-toggler
+    span.sr-only Toggle navigation
+    span.navbar-toggler-icon.icon-bar
+    span.navbar-toggler-icon.icon-bar
+    span.navbar-toggler-icon.icon-bar
+  .navbar-collapse.justify-content-end.collapse
+    form.navbar-form
+    ul.navbar-nav
+      li.nav-item.dropdown
+        a.nav-link
+          i.material-icons notifications
+          span.notification 5
+          p
+            span.d-lg-none.d-md-block Some Actions
+
+block javascripts
+  script( src="/javascripts/cope.client.js" )
+  script( src="/javascripts/cope-app.js" )
+  script.
+    copeApp("#{appId}", "#{path}", "#{params}");

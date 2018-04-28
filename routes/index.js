@@ -22,19 +22,60 @@ router.get('/', function(req, res, next) {
     res.render('appIndex');
   } else {
     debug('Requesting Cope');
-    res.render('index', { title: 'Cope' });
+    res.render('cope-home', { title: 'Cope' });
   }
 });
 
-router.get('/post/:postId', function(req, res) {
-  let postId = req.params.postId;
+router.get('/:appId', function(req, res, next) {
   let appHost = hostname(req);
+  let appId = req.params.appId;
   if (appHost) {
     debug('Requesting page on ' + appHost);
-    res.render('post', { postId: postId });
+    res.render('appIndex');
   } else {
-    debug('Redirecting to Cope');
-    res.redirect('/');
+    debug('Requesting Cope');
+    res.render('cope-app', { 
+      title: 'Cope', 
+      appId: appId,
+      path: null,
+      params: null
+    });
+  }
+});
+
+router.get('/:appId/post/:postId', function(req, res, next) {
+  let appHost = hostname(req);
+  let appId = req.params.appId;
+  let postId = req.params.postId;
+  if (appHost) {
+    debug('Requesting page on ' + appHost);
+    res.render('appIndex');
+  } else {
+    debug('Requesting Cope');
+    res.render('cope-app', { 
+      title: 'Cope', 
+      appId: appId,
+      path: 'post',
+      params: '{"postId":"' + postId + '"}'
+    });
+  }
+});
+
+router.get('/:appId/:section', function(req, res, next) {
+  let appHost = hostname(req);
+  let appId = req.params.appId;
+  let section = req.params.section;
+  if (appHost) {
+    debug('Requesting page on ' + appHost);
+    res.render('appIndex');
+  } else {
+    debug('Requesting Cope');
+    res.render('cope-app', { 
+      title: 'Cope', 
+      appId: appId,
+      path: section,
+      params: null
+    });
   }
 });
 
