@@ -22,13 +22,15 @@ V.createClass('AppCard', vu => {
 
 V.createClass('SignInCard', vu => {
   vu.dom(data => [
-    { '.card': [
-      { 'form.form': [
-        { 'input.form-control@account(type="email" placeholder="Email" value="chops@mail.com")': '' },
-        { 'input.form-control@pwd(type="password" placeholder="Password" value="1234")': '' },
-        { 'button@signUpBtn': 'Sign Up' }, 
-        { 'button@signInBtn': 'Sign In' }] 
-      }] 
+    { 'form': [
+      { '.card.p-3': [
+        { '.form-group': [
+          { 'input.form-control@account(type="email" placeholder="Email" value="chops@mail.com")': '' },
+          { 'input.form-control@pwd(type="password" placeholder="Password" value="1234")': '' },
+          { 'button.btn.btn-primary@signUpBtn': 'Sign Up' }, 
+          { 'button.btn.btn-success@signInBtn': 'Sign In' }] 
+        }] 
+      }]
     }
   ]);
 

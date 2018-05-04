@@ -11,6 +11,207 @@ try {
 let V = cope.views();
 let DS = V.dataStore();
 
+V.createClass('CardsSection', vu => {
+  vu.dom(data => [
+    { '.row': [
+      { '.col-12': [
+        { 'button.btn.btn-primary@createBtn': 'Create' }] 
+      }, 
+      { '.col-12': [
+        { '@cards.card-columns': '' }] 
+      }] 
+    }
+  ]);
+
+  vu.init(data => {
+    vu.$('@createBtn').on('click', evt => {
+      V.build('CardEditorSection', {
+        sel: '#page-content'
+      });
+    });
+  });
+}); // end of CardsSection
+
+V.createClass('CardEditorSection', vu => {
+  let cardEditor = null;
+
+  vu.dom(data => [
+    { '.row[mb:36px]': [
+      { '.col-12': [
+        { '.float-right': [
+          { 'button.btn.btn-success': 'Publish' },
+          { 'button.btn.btn-primary': 'Save' }]
+        }]
+      }, 
+      { '.col-12': [
+        { '.float-right': [
+          { 'button.btn.btn-danger': 'Remove' },
+          { 'button.btn.btn-secondary': 'Templatize' },
+          { 'button.btn.btn-secondary': 'Add To Store' }]
+        }]
+      }] 
+    }
+  ]); // end of CardEditorSection.dom
+
+  vu.init(data => {
+    cardEditor = V.build('CardEditor', {
+      sel: vu.sel(),
+      method: 'after',
+      data: data && data.cardData || null
+    }); 
+  }); // end of CardEditorSection.init
+}); // end of CardEditorSection
+
+V.createClass('CardEditor', vu => {
+  vu.dom(data => [
+    { '.row[relative; m:0 auto; max-width:640px]': [
+      { '.col-2': [
+        { 'div[w:50px;cursor:pointer]@mediaToggler': [
+          { 'i.material-icons[fz:36px]': 'photo' }]
+        }, 
+        { 'div[w:50px;cursor:pointer]@textToggler': [
+          { 'i.material-icons[fz:36px]': 'short_text' }]
+        }, 
+        { 'div[w:50px;cursor:pointer]@kvToggler': [
+          { 'i.material-icons[fz:36px]': 'list' }]
+        }, 
+        { 'div[w:50px;cursor:pointer]@linkToggler': [
+          { 'i.material-icons[fz:36px]': 'link' }]
+        }]
+      }, 
+      { '.col-10': [
+        { '.card[mt:4px]': [
+          { 'div.card-img-top[bgColor:#987;h:100px]@media': '' },
+          { '.card-body': [
+            { 'div@text-body': [
+              { 'textarea.h3(placeholder="Title")[w:100%;b:none;outline:none]@title': '' },
+              { 'textarea.h5(placeholder="Text")[w:100%;b:none;outline:none]@text': '' }] 
+            },
+            { '.row@kv-table': '' },
+            { '.row@link': [
+              { '.col-12': [
+                { 'hr[w:50px;h:12px;b:none;color:#e5c9c2;bgColor:#e5c9c2;mt:60px]': '' }]
+              },
+              { '.col-12': [
+                { '.input-group': [
+                  { '.input-group-prepend': [
+                    { 'span.input-group-text': 'Link' }] 
+                  },
+                  { 'input.form-control(placeholder="Enter the URL")@url': '' },
+                  { '.input-group-append': [
+                    { 'div[bgColor:#ddd; h:100%; w:50px]': '' }] 
+                  }]
+                }]
+              }] 
+            }]
+          }]
+        }] 
+      }] 
+    }
+  ]); // end of CardEditor.dom
+
+  vu.method('appendKV', (key, value) => {
+    V.build('KVInput', {
+      sel: vu.sel('@kv-table'),
+      method: 'append',
+      data: {
+        key: key || '',
+        value: value || ''
+      }
+    });
+  }); // end of CardEditor.appendKV
+
+  vu.init(data => {
+    vu.$('@kvToggler').on('click', evt => {
+      let kvTable = vu.$('@kv-table');
+      if (kvTable.children().length < 1) {
+        vu.appendKV();
+      }
+    });
+  }); // end of CardEditor.init
+}); // end of CardEditor
+
+V.createClass('KVInput', vu => {
+  vu.dom(data => [
+    { '.col-12': [
+      { '.input-group': [
+        //{ '.input-group-prepend.kv-controls.d-none': [
+        //  { 'div[h:100%]': [
+        //    { 'i.material-icons[fz:36px; mr:4px; cursor:pointer]@delBtn': 'remove_circle_outline' }] 
+        //  }]
+        //},
+        { 'input.form-control(placeholder="Field Name")@key': '' },
+        { 'input.form-control(placeholder="Enter Anything")@value': '' },
+        { '.input-group-append@kv-controls[w:144px]': [
+          { 'div.d-none[h:100%]': [
+            { 'i.material-icons[fz:36px; cursor:pointer]@delBtn': 'remove_circle_outline' }, 
+            { 'i.material-icons[fz:36px; cursor:pointer]@upBtn': 'keyboard_arrow_up' }, 
+            { 'i.material-icons[fz:36px; cursor:pointer]@downBtn': 'keyboard_arrow_down' },
+            { 'i.material-icons[fz:36px; cursor:pointer]@addBtn': 'add' }] 
+          }] 
+        }]
+      }]
+    }
+  ]); // end of KVInput.dom
+
+  vu.init(data => {
+    if (data && data.key) {
+      vu.$('@key').val(data.key);
+    }
+    if (data && data.value) {
+      vu.$('@value').val(data.value);
+    }
+
+    vu.$()
+      .on('mouseenter', evt => {
+        vu.$('@kv-controls').children().removeClass('d-none');
+      })
+      .on('mouseleave', evt => {
+        vu.$('@kv-controls').children().addClass('d-none');
+      });
+
+    ['key', 'value'].map(x => {
+      vu.set(x, data && data[x]);
+      vu.$('@' + x).on('keyup', evt => {
+        let v = vu.$('@' + x).val().trim();
+        vu.set(x, v);
+      });
+    });
+
+    vu.$('@addBtn').on('click', evt => {
+      V.build('KVInput', {
+        sel: vu.sel(),
+        method: 'after'
+      });
+    });
+
+    vu.$('@upBtn').on('click', evt => {
+      vu.$().prev().before(vu.$());
+    });
+
+    vu.$('@downBtn').on('click', evt => {
+      vu.$().next().after(vu.$());
+    });
+
+    vu.$('@delBtn').on('click', evt => {
+      vu.$().remove();
+    });
+  }); // end of KVInput
+}); // end of KVInput
+
+V.createClass('PostsSection', vu => {
+  vu.dom(data => [
+    { '.row': [
+      { '.col-12': [
+        { 'button.btn.btn-primary@createBtn': 'Create' }] 
+      }, 
+      { '.col-12': [
+        { '@posts': '' }] 
+      }] 
+    }
+  ]);
+}); // end of PostsSection
+
 V.createClass('PostPreviewCard', vu => {
   vu.dom(data => [
     { 'div.card': [
@@ -187,11 +388,50 @@ V.createClass('EditablePostCard', vu => {
 
 V.createClass('PostEditor', vu => {
   vu.dom(data => [
-    { 'div.form-group': [
-      { 'input.form-control(type="text" placeholder="Title")@title': '' }]
+    { '.row': [
+      { '.col-12': [
+        { '.float-right': [
+          { 'button.btn.btn-danger@removeBtn': 'Remove' },
+          { 'button.btn.btn-secondary@templatizeBtn': 'Templatize' },
+          { 'button.btn.btn-secondary@addToStoreBtn': 'Add To Store' },
+          { 'button.btn.btn-success@publishBtn': 'Publish' },
+          { 'button.btn.btn-primary@doneBtn': 'Done' }]
+        }] 
+      },
+      { '.col-12': [
+        { 'form': [
+          { 'div.form-group': [
+            { 'input.form-control.h2(type="text" placeholder="Title")[h:1.5em]@title': '' },
+            { 'input.form-control.h4(type="text" placeholder="Subtitle")@subtitle': '' }]
+          }]
+        }]
+      },
+      { '.col-12@content': '' },
+      { '.col-12': [
+        { 'button.btn.btn-primary@addElmBtn': 'Add' }]
+      }]
     }
-  ]);
-});
+  ]); // end of PostEditor.dom
+
+  vu.method('render', () => {
+     
+  }); // end of PostEditor.render
+
+  vu.method('appendElm', () => {
+  }); // end of PostEditor.appendElm
+
+  vu.method('save', () => {
+  }); // end of PostEditor.save
+
+  vu.method('done', () => {
+  }); // end of PostEditor.done
+
+  vu.init(data => {
+    vu.$('@addElmBtn').on('click', evt => {
+      vu.appendElm();
+    });
+  }); // end of PostEditor.init
+}); // end of PostEditor
 
 let renderPage = function() {
   switch (path) {
@@ -209,6 +449,13 @@ let renderPage = function() {
 
     case 'members':
       $('#li-' + path).addClass('active');
+      break;
+
+    case 'cards':
+      $('#li-' + path).addClass('active');
+      V.build('CardsSection', {
+        sel: '#page-content'
+      });
       break;
 
     case 'pages':
