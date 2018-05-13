@@ -249,9 +249,11 @@ V.createClass('CardEditor', vu => {
     });
 
     // Render the card
-    let initV = {};
+    let initV = data && data.value || {};
     try {
-      initV = Object.assign({ isActive: vu.get('isActive') }, data && data.value);
+      if (!initV.isActive) {
+        initV.isActive = vu.get('isActive');
+      }
       vu.render(initV);
     } catch (err) {
       console.error(err);
