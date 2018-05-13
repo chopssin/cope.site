@@ -25,9 +25,19 @@ V.createClass('CardsSection', vu => {
 
   vu.init(data => {
     vu.$('@createBtn').on('click', evt => {
-      V.build('CardEditorSection', {
-        sel: '#page-content'
-      });
+      // TBD: Request for a new card
+      //cope.send('/card/add', {
+      //  appId: appId 
+      //}).then((r, d, v) => {
+        //let cardId = res && res.data && res.data.value.cardId;
+        //let cardId = v.cardId;
+        V.build('CardEditorSection', {
+          sel: '#page-content',
+          data: {
+   //         cardId: cardId
+          }
+        });
+      //});
     });
   });
 }); // end of CardsSection
@@ -40,7 +50,7 @@ V.createClass('CardEditorSection', vu => {
       { '.col-12': [
         { '.float-right': [
           { 'button.btn.btn-success': 'Publish' },
-          { 'button.btn.btn-primary': 'Save' }]
+          { 'button.btn.btn-primary@saveBtn': 'Save' }]
         }]
       }, 
       { '.col-12': [
@@ -59,6 +69,14 @@ V.createClass('CardEditorSection', vu => {
       method: 'after',
       data: data && data.cardData || null
     }); 
+
+    vu.$('@saveBtn').on('click', evt => {
+      try {
+        console.log(cardEditor.fetch());
+      } catch (err) {
+        console.error(err);
+      }
+    });
   }); // end of CardEditorSection.init
 }); // end of CardEditorSection
 
@@ -66,13 +84,16 @@ V.createClass('CardEditor', vu => {
   vu.dom(data => [
     { '.row[relative; m:0 auto; max-width:640px]': [
       { '.col-2': [
-        { 'div[w:50px;cursor:pointer]@mediaToggler': [
+        { 'div[w:50px;cursor:pointer]@mediaArrToggler': [
           { 'i.material-icons[fz:36px]': 'photo' }]
+        }, 
+        { 'div[w:50px;cursor:pointer]@headerToggler': [
+          { 'i.material-icons[fz:36px]': 'title' }]
         }, 
         { 'div[w:50px;cursor:pointer]@textToggler': [
           { 'i.material-icons[fz:36px]': 'short_text' }]
         }, 
-        { 'div[w:50px;cursor:pointer]@kvToggler': [
+        { 'div[w:50px;cursor:pointer]@keyValuesToggler': [
           { 'i.material-icons[fz:36px]': 'list' }]
         }, 
         { 'div[w:50px;cursor:pointer]@linkToggler': [
@@ -84,11 +105,11 @@ V.createClass('CardEditor', vu => {
           { 'div.card-img-top[bgColor:#987;h:100px]@media': '' },
           { '.card-body': [
             { 'div@text-body': [
-              { 'textarea.h3(placeholder="Title")[w:100%;b:none;outline:none]@title': '' },
+              { 'textarea.h3(placeholder="Header")[w:100%;b:none;outline:none]@header': '' },
               { 'textarea.h5(placeholder="Text")[w:100%;b:none;outline:none]@text': '' }] 
             },
             { '.row@kv-table': '' },
-            { '.row@link': [
+            { '.row@link-wrap': [
               { '.col-12': [
                 { 'hr[w:50px;h:12px;b:none;color:#e5c9c2;bgColor:#e5c9c2;mt:60px]': '' }]
               },
@@ -97,7 +118,7 @@ V.createClass('CardEditor', vu => {
                   { '.input-group-prepend': [
                     { 'span.input-group-text': 'Link' }] 
                   },
-                  { 'input.form-control(placeholder="Enter the URL")@url': '' },
+                  { 'input.form-control(placeholder="Enter the URL")@link': '' },
                   { '.input-group-append': [
                     { 'div[bgColor:#ddd; h:100%; w:50px]': '' }] 
                   }]
@@ -110,24 +131,131 @@ V.createClass('CardEditor', vu => {
     }
   ]); // end of CardEditor.dom
 
-  vu.method('appendKV', (key, value) => {
+  vu.method('appendKV', kvValue => {
     V.build('KVInput', {
       sel: vu.sel('@kv-table'),
       method: 'append',
-      data: {
-        key: key || '',
-        value: value || ''
-      }
+      data: kvValue
     });
   }); // end of CardEditor.appendKV
 
+  vu.method('fetch', () => {
+    let v = {};
+    v.isActive = vu.get('isActive');
+    v.tags = {};
+    v.mediaArr = vu.get('mediaArr') || []; // TBD
+    v.header = vu.$('@header').val().trim();
+    v.text = vu.$('@text').val().trim();
+    v.link = vu.$('@link').val().trim();
+    v.keyValues = [];
+    vu.$('@kv-table').children().each(function() {
+      let $kv = $(this);
+      let key = $kv.data('key');
+      let value = $kv.data('value');
+      let valid = false;
+
+      if (typeof key == 'string' && key.length > 0) {
+        v.tags[key] = true;
+        valid = true;
+      }
+      if (typeof value == 'string' && value.length > 0) {
+        v.tags[value] = true;
+        valid = true;
+      } 
+      if (valid) {
+        v.keyValues = v.keyValues.concat({
+          'key': key,
+          'value': value
+        });
+      } 
+    }); // end of v.keyValues.map}
+    return v;
+  }); // end of CardEditor.fetch
+
+  vu.method('render', v => {
+
+    console.log('render', v);
+    vu.$('@media').hide();
+    vu.$('@header').hide();
+    vu.$('@text').hide();
+    vu.$('@kv-table').hide();
+    vu.$('@link-wrap').hide();
+    if (v.isActive.mediaArr) {
+      vu.$('@media').show();
+    }
+    if (v.isActive.header) {
+      vu.$('@header').show();
+    }
+    if (v.isActive.text) {
+      vu.$('@text').show();
+    }
+    if (v.isActive.keyValues) {
+      vu.$('@kv-table').show();
+    }
+    if (v.isActive.link) {
+      vu.$('@link-wrap').show();
+    }
+
+    if (typeof v != 'object') {
+      v = {};
+    }
+    if (!Array.isArray(v.keyValues)) {
+      try {
+        v.keyValues = JSON.parse(v.keyValues || '[]');
+      } catch (err) {
+        console.error(err, v);
+        v.keyValues = [];
+      }
+    }
+    // TBD: mediaArr
+    vu.$('@header').val(v.header || '');
+    vu.$('@text').val(v.text || '');
+    vu.$('@link').val(v.link || '');
+    vu.$('@kv-table').html('');
+    v.keyValues.map(kvValue => {
+      vu.appendKV(kvValue);
+    });
+  }); // end of CardEditor.render
+
   vu.init(data => {
-    vu.$('@kvToggler').on('click', evt => {
+    vu.set('isActive', (data 
+      && data.value 
+      && data.value.isActive) 
+      || {
+      'mediaArr': false,
+      'header': true,
+      'text': true,
+      'keyValues': false,
+      'link': false
+    });
+    ['header', 'text', 'mediaArr', 'keyValues', 'link'].map(x => {
+      vu.$('@' + x + 'Toggler').on('click', evt => {
+        try {
+          let isActive = vu.get('isActive');
+          isActive[x] = !isActive[x];
+          vu.set('isActive', isActive);
+          vu.render(vu.fetch());
+        } catch (err) {
+          console.error(err);
+        }
+      });
+    });
+
+    vu.$('@keyValuesToggler').on('click', evt => {
       let kvTable = vu.$('@kv-table');
       if (kvTable.children().length < 1) {
         vu.appendKV();
       }
     });
+
+    // Render the card
+    let initV = {};
+    try {
+      initV = Object.assign({ isActive: vu.get('isActive') }, data && data.value);
+      vu.render(initV);
+    } catch (err) {
+      console.error(err);
+    }
   }); // end of CardEditor.init
 }); // end of CardEditor
 
@@ -171,10 +299,11 @@ V.createClass('KVInput', vu => {
       });
 
     ['key', 'value'].map(x => {
-      vu.set(x, data && data[x]);
+      vu.set(x, (data && data[x]) || '');
       vu.$('@' + x).on('keyup', evt => {
         let v = vu.$('@' + x).val().trim();
         vu.set(x, v);
+        console.log(vu.$().data());
       });
     });
 
@@ -196,7 +325,7 @@ V.createClass('KVInput', vu => {
     vu.$('@delBtn').on('click', evt => {
       vu.$().remove();
     });
-  }); // end of KVInput
+  }); // end of KVInput.init
 }); // end of KVInput
 
 V.createClass('PostsSection', vu => {

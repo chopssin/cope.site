@@ -402,7 +402,10 @@ cope.send = function(path, params, method) {
       cmd.data = params; 
     }
     $.ajax(cmd).done(res => {
-      resolve(res);
+      let data = res && res.data || {};
+      let value = data && data.value || {};
+      resolve(res, data, value);
+      //resolve(value, data, res);
     }).fail(err => {
       console.error(err);
     });
