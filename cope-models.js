@@ -612,5 +612,14 @@ module.exports = function() {
     }); // end of `checkGetPostIds`
   }); // end of "cope/post"
 
+  M.createModel('cope/card', model => {
+    model.setMask('add', (obj, userData, params) => {
+      debug('cope/card: setmask: add', obj, userData, params);
+      return new Promise((resolve, reject) => {
+        resolve(obj);
+      });
+    });
+  });
+
   return false;
 }();

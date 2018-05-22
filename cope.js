@@ -83,7 +83,36 @@ module.exports = function() {
   //       - createNode
   //       - node
   //       - findNodes = (<obj>query) => <Promise>
-  //       - method
+  //       - setCheck = (<str>fnName, <func> => <Promise>: {
+  //         - then = (<callback>(<mixed>validInput))
+  //       })
+  //       - setMask = (<str>fnName, <func> => <Promise>: {
+  //         - then = (<callback>(<mixed>maskedOutput))
+  //       })
+  //       - check = (<str>fnName, <obj>input, <obj>userData, <obj>params) =>
+  //       <Promise>: {
+  //         - then = (<callback>(<mixed>validInput))
+  //       } 
+  //       - mask = (<str>fnName, <obj>output, <obj>userData, <obj>params) =>
+  //       <Promise>: {
+  //         - then = (<callback>(<mixed>validOutput))
+  //       } 
+  //       - add = (<obj>input, <obj>userData, <obj>params) => <Promise>: {
+  //         - then = (<callback>(<obj>result))
+  //       }
+  //       - del = (<obj>input, <obj>userData, <obj>params) => <Promise>: {
+  //         - then = (<callback>(<obj>result))
+  //       }
+  //       - get = (<obj>input, <obj>userData, <obj>params) => <Promise>: {
+  //         - then = (<callback>(<obj>result))
+  //       }
+  //       - getMany = (<obj>input, <obj>userData, <obj>params) => <Promise>: {
+  //         - then = (<callback>(<obj>result))
+  //       }
+  //       - update = (<obj>input, <obj>userData, <obj>params) => <Promise>: {
+  //         - then = (<callback>(<obj>result))
+  //       }
+  //       - method = (<str>methodName, <func>)
   //     } EOF modelAPI
   //   } EOF modelAPI
   //   - useMongoDb = (<obj>params) => false
@@ -157,9 +186,9 @@ module.exports = function() {
           newNodeData.updatedAt = new Date().getTime();
           newNodeData.createdAt = newNodeData.updatedAt;
           newNodeData.value = {};
-          newNodeData.tags = {};
-          newNodeData.scopeWrite = 'ONLY_ME';
-          newNodeData.scopeRead = 'PUBLIC';
+          //newNodeData.tags = {};
+          //newNodeData.scopeWrite = 'ONLY_ME';
+          //newNodeData.scopeRead = 'PUBLIC';
           mg.collection('nodes').insertOne(newNodeData, (err, result) => {
             if (err) {
               reject(debug('[ERR] graphAPI.createNode()', err));
@@ -741,8 +770,10 @@ module.exports = function() {
 
     modelManagerAPI.createModel = function(modelName, modelFunc) {
       let modelAPI = {};
+      let funcs = {};
+      let checkFuncs = {};
+      let maskFuncs = {};
 
-      // TBD: 
       modelAPI.createNode = function() {
         return new Promise((resolve, reject) => {
           cope.G.createNode().then(nodeId => {
@@ -851,6 +882,144 @@ module.exports = function() {
           return subAPI;
         }
       }; // end of modelAPI.sub
+
+      let setFn = function(name, fn) {
+        if (typeof fn == 'function') {
+          funcs[name] = fn;
+        } else {
+          debug('setFn(name, fn): invalid arguments', name, fn);
+        }
+      }; // end of setFn
+
+      let useFn = function(name, obj, userData, params) {
+        return new Promise((resolve, reject) => {
+          let fn = funcs[name];
+          if (fn) {
+            try {
+              fn(obj, userData, params).then(validObj => {
+                resolve(validObj);
+              });
+            } catch (err) {
+              debug('useFn', err);
+              reject(err);
+            }
+          } else {
+            resolve(obj);
+          }
+        });
+      }; // end of useFn
+
+      modelAPI.setCheck = function(name, fn) {
+        setFn('check.' + name, fn);
+      }; // end of modelAPI.setCheck
+
+      modelAPI.setMask = function(name, fn) {
+        setFn('mask.' + name, fn);
+      }; // end of modelAPI.setMask
+
+      modelAPI.check = function(name, obj, userData, params) {
+        return useFn('check.' + name, obj, userData, params);
+      }; // end of modelAPI.check
+
+      modelAPI.mask = function(name, obj, userData, params) {
+        return useFn('mask.' + name, obj, userData, params);
+      }; // end of modelAPI.check
+
+      // Built-in add, del, get, all, update method
+      modelAPI.add = function(inputValue, userData, params) {
+        let ID_LENGTH = 8;
+
+        return new Promise((resolve, reject) => {
+          modelAPI.check('add', inputValue, userData, params).then(initValue => {
+            modelAPI.createNode().then(nodeId => {
+              let newNode = modelAPI.node(nodeId);
+              let id = nodeId.slice(2, 2 + ID_LENGTH);
+              initValue.id = id; // shorter id
+              newNode.val(initValue).next(() => {
+                modelAPI.mask('add', newNode.snap.data(), userData, params).then(maskedData => {
+                  resolve(maskedData);
+                });
+              });
+            });
+          });
+        });
+      } // end of modelAPI.add;
+
+      modelAPI.del = function(inputQuery, userData, params) {
+        return new Promise((resolve, reject) => {
+          modelAPI.check('del', inputQuery, userData, params).then(validQuery => {
+            let node = modelAPI.node(validQuery);
+            node.next(() => {
+              if (node.nodeId()) {
+                node.del().then(() => {
+                  resolve({ 'deleted': true });
+                });
+              }
+            });
+          });
+        });
+      } // end of modelAPI.del;
+
+      modelAPI.get = function(inputQuery, userData, params) {
+        return new Promise((resolve, reject) => {
+          modelAPI.check('get', inputQuery, userData, params).then(validQuery => {
+            let node = modelAPI.node(validQuery);
+            node.fetchData().next(() => {
+              if (node.nodeId()) {
+                modelAPI.mask('get', node.snap.data(), userData, params).then(maskedData => {
+                  resolve(maskedData);
+                });
+              } else {
+                reject(null);
+              }
+            });
+          });
+        });
+      }; // end of modelAPI.get
+
+      modelAPI.getMany = function(inputQuery, userData, params) {
+        return new Promise((resolve, reject) => {
+          modelAPI.check('getMany', inputQuery, userData, params).then(validQueries => {
+            if (validQueries.tags) {
+              modelAPI.findNodes(validQueries.tags).then(nodesDataObj => {
+                modelAPI.mask('getMany', nodesDataObj, userData, params).then(maskedData => {
+                  resolve(maskedData);
+                });
+              });
+            } else if (validQueries.subsets) {
+              let subset = modelAPI.sub();
+              validQueries.subsets.map(subQuery => {
+                subset = subset.sub(subQuery.linkName, subQuery.source, subQuery.target);
+              });
+              subset.then(ids => {
+                G.findNodes(ids).then(nodesDataObj => {
+                  modelAPI.mask('getMany', nodesDataObj, userData, params).then(maskedData => {
+                    resolve(maskedData);
+                  });
+                }); 
+              });
+            }
+          });
+        });
+      }; // end of modelAPI.getMany
+
+      modelAPI.update = function(inputParams, userData, params) {
+        return new Promise((resolve, reject) => {
+          modelAPI.check('update', inputParams, userData, params).then(validParams => {
+            let node = modelAPI.node(validParams.query);
+            node.val(validParams.updates).next(() => {
+              if (node.nodeId()) {
+                resolve(node.snap.data());
+                modelAPI.mask('update', node.snap.data(), userData, params).then(maskedData => {
+                  resolve(maskedData);
+                });
+              } else {
+                reject(null);
+              }
+            });
+          });
+        });
+      }; // end of modelAPI.update
  
       modelAPI.method = function(name, fn) {
         if (!modelAPI[name] && (typeof fn == 'function')) {

@@ -82,7 +82,7 @@ let setAPI = function(method, apiPath, modelName, modelMethod) {
   router[method](apiPath, function(req, res, next) {
     let obj = req.body || null;
 
-    // TBD: Use client-session to recognize user
+    // Use client-session to recognize user
     let userData = {};
     userData.copeUserData = req.session && req.session.copeUserData || null;
     userData.appUserData = req.session && req.session.appUserData || null;
@@ -120,6 +120,12 @@ setAPI('post', '/post/del', 'cope/post', 'delPost');
 setAPI('post', '/post/get', 'cope/post', 'getPost');
 setAPI('post', '/post/all', 'cope/post', 'getPostIds');
 setAPI('post', '/post/update', 'cope/post', 'updatePost');
+
+setAPI('post', '/card/add', 'cope/card', 'add');
+setAPI('post', '/card/del', 'cope/card', 'del');
+setAPI('post', '/card/get', 'cope/card', 'get');
+setAPI('post', '/card/all', 'cope/card', 'getMany');
+setAPI('post', '/card/update', 'cope/card', 'update');
 
 // Define APIs which requires more flexible and custom design
 router.post('/account/me', function(req, res, next) {

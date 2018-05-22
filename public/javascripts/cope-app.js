@@ -25,19 +25,17 @@ V.createClass('CardsSection', vu => {
 
   vu.init(data => {
     vu.$('@createBtn').on('click', evt => {
-      // TBD: Request for a new card
-      //cope.send('/card/add', {
-      //  appId: appId 
-      //}).then((r, d, v) => {
-        //let cardId = res && res.data && res.data.value.cardId;
-        //let cardId = v.cardId;
+      // Request for a new card
+      cope.send('/card/add', {
+        appId: appId 
+      }).then(res => {
         V.build('CardEditorSection', {
           sel: '#page-content',
           data: {
-   //         cardId: cardId
+            cardId: res.v.id
           }
         });
-      //});
+      });
     });
   });
 }); // end of CardsSection
@@ -72,7 +70,10 @@ V.createClass('CardEditorSection', vu => {
 
     vu.$('@saveBtn').on('click', evt => {
       try {
-        console.log(cardEditor.fetch());
+        console.log(vu.get(), cardEditor.fetch());
+        //cope.send('/card/update', {
+        //  cardId: vu.get('cardId'),
+        //});
       } catch (err) {
         console.error(err);
       }
