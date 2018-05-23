@@ -71,9 +71,12 @@ V.createClass('CardEditorSection', vu => {
     vu.$('@saveBtn').on('click', evt => {
       try {
         console.log(vu.get(), cardEditor.fetch());
-        //cope.send('/card/update', {
-        //  cardId: vu.get('cardId'),
-        //});
+        cope.send('/card/update', {
+          cardId: vu.get('cardId'),
+          updates: cardEditor.fetch()
+        }).then(res => {
+          console.log(res);
+        });
       } catch (err) {
         console.error(err);
       }

@@ -77,10 +77,21 @@ let apis = function() {
   };
 }(); // apis
 */
+let parse = function(body) {
+  let obj = null;
+  try { 
+    obj = JSON.parse(body && body.data);
+  } catch (err) {
+    obj = body;
+  }
+  debug('parse', body, obj);
+  return obj; 
+};
 
 let setAPI = function(method, apiPath, modelName, modelMethod) {
   router[method](apiPath, function(req, res, next) {
-    let obj = req.body || null;
+    let body = req.body || null;
+    let obj = parse(body);
 
     // Use client-session to recognize user
     let userData = {};
@@ -138,8 +149,9 @@ router.post('/account/me', function(req, res, next) {
 
 router.post('/account/signin', function(req, res, next) {
   //apis.set('post', '/u/signin', 'users', 'signIn');
-  debug('asdasdadas');
-  M.model('cope/user').signIn(req.body).then(data => {
+  let body = req.body || null;
+  let obj = parse(body);
+  M.model('cope/user').signIn(obj).then(data => {
     if (typeof req.session == 'object' && data) {
       req.session.copeUserData = data;
       res.send({ ok: true, data: req.session.copeUserData });

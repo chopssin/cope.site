@@ -1006,17 +1006,21 @@ module.exports = function() {
       modelAPI.update = function(inputParams, userData, params) {
         return new Promise((resolve, reject) => {
           modelAPI.check('update', inputParams, userData, params).then(validParams => {
-            let node = modelAPI.node(validParams.query);
-            node.val(validParams.updates).next(() => {
-              if (node.nodeId()) {
-                resolve(node.snap.data());
-                modelAPI.mask('update', node.snap.data(), userData, params).then(maskedData => {
-                  resolve(maskedData);
-                });
-              } else {
-                reject(null);
-              }
-            });
+            try {
+              let node = modelAPI.node(validParams.query);
+              node.val(validParams.updates).next(() => {
+                if (node.nodeId()) {
+                  resolve(node.snap.data());
+                  modelAPI.mask('update', node.snap.data(), userData, params).then(maskedData => {
+                    resolve(maskedData);
+                  });
+                } else {
+                  reject(null);
+                }
+              });
+            } catch (err) {
+              debug(err, validParams);
+            }
           });
         });
       }; // end of modelAPI.update

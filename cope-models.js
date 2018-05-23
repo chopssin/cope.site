@@ -127,6 +127,7 @@ module.exports = function() {
     }); // end of `checkGetProfile`
 
     model.method('checkSignIn', (obj, userData) => {
+      debug('checkSingIn', obj);
       return new Promise((resolve, reject) => {
         let valid = {};
         if (obj && (typeof obj.email == 'string') && (typeof obj.pwd == 'string')) {
@@ -613,10 +614,21 @@ module.exports = function() {
   }); // end of "cope/post"
 
   M.createModel('cope/card', model => {
-    model.setMask('add', (obj, userData, params) => {
-      debug('cope/card: setmask: add', obj, userData, params);
+    model.setCheck('update', (obj, userData, params) => {
       return new Promise((resolve, reject) => {
-        resolve(obj);
+        let valid = {};
+        let id = obj && obj.cardId;
+        if (id) {
+          valid.query = { 'id': id };
+          valid.updates = obj.updates;
+          if (valid.updates && valid.updates.id) {
+            delete valid.updates.id;
+          }
+          debug('cope/card: setmask: update', valid, obj, userData, params);
+          resolve(valid);
+        } else {
+          reject('Lack of `cardId`');
+        }
       });
     });
   });

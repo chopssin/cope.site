@@ -399,11 +399,19 @@ cope.send = function(path, params, method) {
     cmd.method = method || 'post';
     cmd.url = '/api' + path;
     if (params) { 
-      cmd.data = params; 
+      if (typeof params == 'object' && Object.keys(params).length > 0) {
+        try {
+          params = JSON.stringify(params);
+        } catch (err) {
+          console.error(err);
+        }
+      }
+      cmd.data = { 'data': params }; 
     }
+
     $.ajax(cmd).done(res => {
       try {
-        res.v = res && res.data && res.data.value;
+        res.v = res && res.data && res.data.value || {};
       } catch (err) {
         console.error(err);
       }
