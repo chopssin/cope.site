@@ -631,7 +631,41 @@ module.exports = function() {
         }
       });
     });
-  });
+
+    model.setCheck('getMany', (obj, userData, params) => {
+      return new Promise((resolve, reject) => {
+        let valid = {};
+        let copeUserNodeId = userData 
+          && userData.copeUserData 
+          && userData.copeUserData.nodeId 
+          || null;
+        if (obj && obj.mine && copeUserNodeId) {
+          valid.subsetArr = [{ 'linkName': 'cardCreator', 'target': copeUserNodeId }];
+        }
+        debug('getMany', obj, userData, params, copeUserNodeId);
+        resolve(valid);
+      });
+    });
+
+    model.setMask('add', (obj, userData, params) => {
+      return new Promise((resolve, reject) => {
+        let cardNodeId = obj.nodeId;
+        let copeUserNodeId = userData 
+          && userData.copeUserData 
+          && userData.copeUserData.nodeId 
+          || null;
+        if (cardNodeId && copeUserNodeId) {
+          G.node(cardNodeId).link('cardCreator', copeUserNodeId).next(() => {
+            delete obj._id;
+            delete obj.nodeId;
+            resolve(obj);
+          });
+        } else {
+          // TBD
+        }
+      });
+    });
+  }); // end of "cope/card"
 
   return false;
 }();

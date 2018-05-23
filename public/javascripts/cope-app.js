@@ -23,6 +23,12 @@ V.createClass('CardsSection', vu => {
     }
   ]);
 
+  vu.method('load', () => {
+    cope.send('/card/all', { mine: true }).then(res => {
+      console.log(res);
+    });
+  }); // end of CardsSection
+
   vu.init(data => {
     vu.$('@createBtn').on('click', evt => {
       // Request for a new card
@@ -37,6 +43,8 @@ V.createClass('CardsSection', vu => {
         });
       });
     });
+
+    vu.load();
   });
 }); // end of CardsSection
 
@@ -70,7 +78,6 @@ V.createClass('CardEditorSection', vu => {
 
     vu.$('@saveBtn').on('click', evt => {
       try {
-        console.log(vu.get(), cardEditor.fetch());
         cope.send('/card/update', {
           cardId: vu.get('cardId'),
           updates: cardEditor.fetch()

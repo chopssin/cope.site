@@ -986,18 +986,21 @@ module.exports = function() {
                   resolve(maskedData);
                 });
               });
-            } else if (validQueries.subsets) {
+            } else if (validQueries.subsetArr) {
               let subset = modelAPI.sub();
-              validQueries.subsets.map(subQuery => {
+              validQueries.subsetArr.map(subQuery => {
                 subset = subset.sub(subQuery.linkName, subQuery.source, subQuery.target);
               });
-              subset.then(ids => {
-                G.findNodes(ids).then(nodesDataObj => {
+              subset.then(idsArr => {
+                cope.G.findNodes(idsArr).then(nodesDataObj => {
                   modelAPI.mask('getMany', nodesDataObj, userData, params).then(maskedData => {
                     resolve(maskedData);
                   });
                 }); 
               });
+            } else {
+              debug('Invalid query', validQueries);
+              reject('Invalid query');
             }
           });
         });
