@@ -654,8 +654,10 @@ module.exports = function() {
           && userData.copeUserData 
           && userData.copeUserData.nodeId 
           || null;
+
         if (cardNodeId && copeUserNodeId) {
-          G.node(cardNodeId).link('cardCreator', copeUserNodeId).next(() => {
+          G.node(cardNodeId)
+            .link('cardCreator', copeUserNodeId).next(() => {
             delete obj._id;
             delete obj.nodeId;
             resolve(obj);

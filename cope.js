@@ -1009,6 +1009,14 @@ module.exports = function() {
       modelAPI.update = function(inputParams, userData, params) {
         return new Promise((resolve, reject) => {
           modelAPI.check('update', inputParams, userData, params).then(validParams => {
+            if (!validParams 
+              || !validParams.query
+              || !validParams.updates 
+              || validParams.updates.id) {
+              debug('Invalid updates or query', validParams);
+              reject('Invalid updates or query');
+              return;
+            }
             try {
               let node = modelAPI.node(validParams.query);
               node.val(validParams.updates).next(() => {
