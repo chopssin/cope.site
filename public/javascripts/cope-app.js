@@ -13,14 +13,8 @@ let DS = V.dataStore();
 
 V.createClass('CardsSection', vu => {
   vu.dom(data => [
-    { '.row': [
-      { '.col-12': [
-        { 'button.btn.btn-primary@createBtn': 'Create' }] 
-      }, 
-      { '.col-12': [
-        { '@cards.card-columns': '' }] 
-      }] 
-    }
+    { 'button.btn.btn-primary@createBtn': 'Create' },
+    { '@cards.card-columns': '' } 
   ]);
 
   vu.method('load', () => {
@@ -82,17 +76,28 @@ V.createClass('Card', vu => {
     { '.card[mt:4px]': [
       { 'div.card-img-top[bgColor:#987;h:100px]@media': '' },
       { '.card-body': [
-        { 'div@text-body': [
-          { 'h3@header': data.header || '' },
-          { 'p@text': data.text.replace(/\n/g, '<br>') || '' }]
-        },
-        { '.row@kv-table': '' }]
+        { 'h4@header': data.header || '' },
+        { 'p@text': data.text.replace(/\n/g, '<br>') || '' },
+        { 'table.table@kv-table[bgColor:#fafafa]': '' }]
       }]
     }
   ]); // end of Card.dom
 
+  vu.method('render', data => {
+    if (data.keyValues && data.keyValues.length > 0) {
+      data.keyValues.map(x => {
+        vu.$('@kv-table').append(V.dom([
+          { 'tr': [
+            { 'td': x.key || '' },
+            { 'td': x.value || '' }] 
+          }
+        ], vu.id));
+      });
+    }
+  });
+
   vu.init(data => {
-    console.log(data);
+    vu.render(data);
   }); // end of Card.init
 }); // end of Card
 

@@ -614,7 +614,7 @@ module.exports = function() {
   }); // end of "cope/post"
 
   M.createModel('cope/card', model => {
-    model.setCheck('update', (obj, userData, params) => {
+    model.setBefore('update', (obj, userData, params) => {
       return new Promise((resolve, reject) => {
         let valid = {};
         let id = obj && obj.cardId;
@@ -632,7 +632,7 @@ module.exports = function() {
       });
     });
 
-    model.setCheck('getMany', (obj, userData, params) => {
+    model.setBefore('getMany', (obj, userData, params) => {
       return new Promise((resolve, reject) => {
         let valid = {};
         let copeUserNodeId = userData 
@@ -647,7 +647,7 @@ module.exports = function() {
       });
     });
 
-    model.setMask('add', (obj, userData, params) => {
+    model.setAfter('add', (obj, userData, params) => {
       return new Promise((resolve, reject) => {
         let cardNodeId = obj.nodeId;
         let copeUserNodeId = userData 

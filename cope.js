@@ -83,10 +83,10 @@ module.exports = function() {
   //       - createNode
   //       - node
   //       - findNodes = (<obj>query) => <Promise>
-  //       - setCheck = (<str>fnName, <func> => <Promise>: {
+  //       - setBefore = (<str>fnName, <func> => <Promise>: {
   //         - then = (<callback>(<mixed>validInput))
   //       })
-  //       - setMask = (<str>fnName, <func> => <Promise>: {
+  //       - setAfter = (<str>fnName, <func> => <Promise>: {
   //         - then = (<callback>(<mixed>maskedOutput))
   //       })
   //       - check = (<str>fnName, <obj>input, <obj>userData, <obj>params) =>
@@ -909,34 +909,34 @@ module.exports = function() {
         });
       }; // end of useFn
 
-      modelAPI.setCheck = function(name, fn) {
-        setFn('check.' + name, fn);
-      }; // end of modelAPI.setCheck
+      modelAPI.setBefore = function(name, fn) {
+        setFn('before.' + name, fn);
+      }; // end of modelAPI.setBefore
 
-      modelAPI.setMask = function(name, fn) {
-        setFn('mask.' + name, fn);
-      }; // end of modelAPI.setMask
+      modelAPI.setAfter = function(name, fn) {
+        setFn('after.' + name, fn);
+      }; // end of modelAPI.setAfter
 
-      modelAPI.check = function(name, obj, userData, params) {
-        return useFn('check.' + name, obj, userData, params);
-      }; // end of modelAPI.check
+      modelAPI.before = function(name, obj, userData, params) {
+        return useFn('before.' + name, obj, userData, params);
+      }; // end of modelAPI.before
 
-      modelAPI.mask = function(name, obj, userData, params) {
-        return useFn('mask.' + name, obj, userData, params);
-      }; // end of modelAPI.check
+      modelAPI.after = function(name, obj, userData, params) {
+        return useFn('after.' + name, obj, userData, params);
+      }; // end of modelAPI.after
 
       // Built-in add, del, get, all, update method
       modelAPI.add = function(inputValue, userData, params) {
         let ID_LENGTH = 8;
 
         return new Promise((resolve, reject) => {
-          modelAPI.check('add', inputValue, userData, params).then(initValue => {
+          modelAPI.before('add', inputValue, userData, params).then(initValue => {
             modelAPI.createNode().then(nodeId => {
               let newNode = modelAPI.node(nodeId);
               let id = nodeId.slice(2, 2 + ID_LENGTH);
               initValue.id = id; // shorter id
               newNode.val(initValue).next(() => {
-                modelAPI.mask('add', newNode.snap.data(), userData, params).then(maskedData => {
+                modelAPI.after('add', newNode.snap.data(), userData, params).then(maskedData => {
                   resolve(maskedData);
                 });
               });
@@ -947,7 +947,7 @@ module.exports = function() {
 
       modelAPI.del = function(inputQuery, userData, params) {
         return new Promise((resolve, reject) => {
-          modelAPI.check('del', inputQuery, userData, params).then(validQuery => {
+          modelAPI.before('del', inputQuery, userData, params).then(validQuery => {
             let node = modelAPI.node(validQuery);
             node.next(() => {
               if (node.nodeId()) {
@@ -962,11 +962,11 @@ module.exports = function() {
 
       modelAPI.get = function(inputQuery, userData, params) {
         return new Promise((resolve, reject) => {
-          modelAPI.check('get', inputQuery, userData, params).then(validQuery => {
+          modelAPI.before('get', inputQuery, userData, params).then(validQuery => {
             let node = modelAPI.node(validQuery);
             node.fetchData().next(() => {
               if (node.nodeId()) {
-                modelAPI.mask('get', node.snap.data(), userData, params).then(maskedData => {
+                modelAPI.after('get', node.snap.data(), userData, params).then(maskedData => {
                   resolve(maskedData);
                 });
               } else {
@@ -979,10 +979,10 @@ module.exports = function() {
 
       modelAPI.getMany = function(inputQuery, userData, params) {
         return new Promise((resolve, reject) => {
-          modelAPI.check('getMany', inputQuery, userData, params).then(validQueries => {
+          modelAPI.before('getMany', inputQuery, userData, params).then(validQueries => {
             if (validQueries.tags) {
               modelAPI.findNodes(validQueries.tags).then(nodesDataObj => {
-                modelAPI.mask('getMany', nodesDataObj, userData, params).then(maskedData => {
+                modelAPI.after('getMany', nodesDataObj, userData, params).then(maskedData => {
                   resolve(maskedData);
                 });
               });
@@ -993,7 +993,7 @@ module.exports = function() {
               });
               subset.then(idsArr => {
                 cope.G.findNodes(idsArr).then(nodesDataObj => {
-                  modelAPI.mask('getMany', nodesDataObj, userData, params).then(maskedData => {
+                  modelAPI.after('getMany', nodesDataObj, userData, params).then(maskedData => {
                     resolve(maskedData);
                   });
                 }); 
@@ -1008,7 +1008,7 @@ module.exports = function() {
 
       modelAPI.update = function(inputParams, userData, params) {
         return new Promise((resolve, reject) => {
-          modelAPI.check('update', inputParams, userData, params).then(validParams => {
+          modelAPI.before('update', inputParams, userData, params).then(validParams => {
             if (!validParams 
               || !validParams.query
               || !validParams.updates 
@@ -1022,7 +1022,7 @@ module.exports = function() {
               node.val(validParams.updates).next(() => {
                 if (node.nodeId()) {
                   resolve(node.snap.data());
-                  modelAPI.mask('update', node.snap.data(), userData, params).then(maskedData => {
+                  modelAPI.after('update', node.snap.data(), userData, params).then(maskedData => {
                     resolve(maskedData);
                   });
                 } else {
