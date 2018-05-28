@@ -147,24 +147,26 @@ V.createClass('CardEditorSection', vu => {
 V.createClass('CardEditor', vu => {
   vu.dom(data => [
     { '.row[relative; m:0 auto; max-width:640px]': [
-      { '.col-2': [
-        { 'div[w:50px;cursor:pointer]@mediaArrToggler': [
-          { 'i.material-icons[fz:36px]': 'photo' }]
-        }, 
-        { 'div[w:50px;cursor:pointer]@headerToggler': [
-          { 'i.material-icons[fz:36px]': 'title' }]
-        }, 
-        { 'div[w:50px;cursor:pointer]@textToggler': [
-          { 'i.material-icons[fz:36px]': 'short_text' }]
-        }, 
-        { 'div[w:50px;cursor:pointer]@keyValuesToggler': [
-          { 'i.material-icons[fz:36px]': 'list' }]
-        }, 
-        { 'div[w:50px;cursor:pointer]@linkToggler': [
-          { 'i.material-icons[fz:36px]': 'link' }]
+      { '.col-sm-2.col-xs-12': [
+        { '.row': [
+          { 'div.col-xs.col-sm-12[w:50px;cursor:pointer]@mediaArrToggler': [
+            { 'i.material-icons[fz:36px]': 'photo' }]
+          }, 
+          { 'div.col-xs.col-sm-12[w:50px;cursor:pointer]@headerToggler': [
+            { 'i.material-icons[fz:36px]': 'title' }]
+          }, 
+          { 'div.col-xs.col-sm-12[w:50px;cursor:pointer]@textToggler': [
+            { 'i.material-icons[fz:36px]': 'short_text' }]
+          }, 
+          { 'div.col-xs.col-sm-12[w:50px;cursor:pointer]@keyValuesToggler': [
+            { 'i.material-icons[fz:36px]': 'list' }]
+          }, 
+          { 'div.col-xs.col-sm-12[w:50px;cursor:pointer]@linkToggler': [
+            { 'i.material-icons[fz:36px]': 'link' }]
+          }]
         }]
       }, 
-      { '.col-10': [
+      { '.col-sm-10.col-xs-12': [
         { '.card[mt:4px]': [
           { 'div.card-img-top[bgColor:#987;h:100px]@media': '' },
           { '.card-body': [
@@ -336,12 +338,14 @@ V.createClass('KVInput', vu => {
         //},
         { 'input.form-control(placeholder="Field Name")@key': '' },
         { 'input.form-control(placeholder="Enter Anything")@value': '' },
-        { '.input-group-append@kv-controls[w:144px]': [
-          { 'div.d-none[h:100%]': [
-            { 'i.material-icons[fz:36px; cursor:pointer]@delBtn': 'remove_circle_outline' }, 
-            { 'i.material-icons[fz:36px; cursor:pointer]@upBtn': 'keyboard_arrow_up' }, 
-            { 'i.material-icons[fz:36px; cursor:pointer]@downBtn': 'keyboard_arrow_down' },
-            { 'i.material-icons[fz:36px; cursor:pointer]@addBtn': 'add' }] 
+        { '.input-group-append.d-none@kv-controls': [
+          { 'div@actionBtns[h:100%]': [
+            { 'i.material-icons.d-none[fz:36px; cursor:pointer]@delBtn': 'remove_circle_outline' }, 
+            { 'i.material-icons.d-none[fz:36px; cursor:pointer]@upBtn': 'keyboard_arrow_up' }, 
+            { 'i.material-icons.d-none[fz:36px; cursor:pointer]@downBtn': 'keyboard_arrow_down' },
+            { 'i.material-icons.d-none[fz:36px; cursor:pointer]@addBtn': 'add' }, 
+            { 'i.material-icons.d-none[fz:36px; cursor:pointer]@closeBtn': 'more_horiz' }, 
+            { 'i.material-icons[fz:36px; cursor:pointer]@moreBtn': 'more_horiz' }]
           }] 
         }]
       }]
@@ -356,12 +360,14 @@ V.createClass('KVInput', vu => {
       vu.$('@value').val(data.value);
     }
 
+    
     vu.$()
       .on('mouseenter', evt => {
-        vu.$('@kv-controls').children().removeClass('d-none');
+        vu.$('@kv-controls').removeClass('d-none');
       })
       .on('mouseleave', evt => {
-        vu.$('@kv-controls').children().addClass('d-none');
+        vu.$('@kv-controls').addClass('d-none');
+        vu.$('@closeBtn').click();
       });
 
     ['key', 'value'].map(x => {
@@ -390,6 +396,15 @@ V.createClass('KVInput', vu => {
 
     vu.$('@delBtn').on('click', evt => {
       vu.$().remove();
+    });
+
+    vu.$('@moreBtn').on('click', evt => {
+      vu.$('@actionBtns').children().toggleClass('d-none');
+    });
+
+    vu.$('@closeBtn').on('click', evt => {
+      vu.$('@actionBtns').children().addClass('d-none');
+      vu.$('@moreBtn').removeClass('d-none');
     });
   }); // end of KVInput.init
 }); // end of KVInput
