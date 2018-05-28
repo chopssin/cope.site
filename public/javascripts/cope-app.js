@@ -151,6 +151,8 @@ V.createClass('CardEditorSection', vu => {
     }); 
 
     vu.$('@saveBtn').on('click', evt => {
+      console.log(vu.get('cardId'), cardEditor.fetch());
+      return;
       try {
         cope.send('/card/update', {
           cardId: vu.get('cardId'),
@@ -237,18 +239,28 @@ V.createClass('CardEditor', vu => {
     v.keyValues = [];
     vu.$('@kv-table').children().each(function() {
       let $kv = $(this);
-      let key = $kv.data('key');
-      let value = $kv.data('value');
+      //let key = $kv.data('key');
+      //let value = $kv.data('value');
       let valid = false;
-
-      if (typeof key == 'string' && key.length > 0) {
-        v.tags[key] = true;
-        valid = true;
+      let inputValues = [];
+      let key, value;
+      try {
+        $kv.find('input').each(function() {
+          inputValues = inputValues.concat($(this).val().trim());
+        });
+        key = inputValues[0] || null;
+        value = inputValues[1] || null;
+        if (typeof key == 'string' && key.length > 0) {
+          v.tags[key] = true;
+          valid = true;
+        }
+        if (typeof value == 'string' && value.length > 0) {
+          v.tags[value] = true;
+          valid = true;
+        } 
+      } catch (err) {
+        valid = false;
       }
-      if (typeof value == 'string' && value.length > 0) {
-        v.tags[value] = true;
-        valid = true;
-      } 
       if (valid) {
         v.keyValues = v.keyValues.concat({
           'key': key,
@@ -373,6 +385,17 @@ V.createClass('KVInput', vu => {
     }
   ]); // end of KVInput.dom
 
+  vu.method('fetch', () => {
+    ['key', 'value'].map(x => {
+      let v = vu.$('@' + x).val().trim();
+      vu.set(x, v);
+    });
+    return {
+      key: vu.get('key'),
+      value: vu.get('value')
+    };
+  }); // end of KVInput.fetch
+
   vu.init(data => {
     if (data && data.key) {
       vu.$('@key').val(data.key);
@@ -380,7 +403,6 @@ V.createClass('KVInput', vu => {
     if (data && data.value) {
       vu.$('@value').val(data.value);
     }
-
     
     vu.$()
       .on('mouseenter', evt => {
