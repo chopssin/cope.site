@@ -75,7 +75,7 @@ V.createClass('CardsSection', vu => {
 V.createClass('Card', vu => {
   vu.dom(data => [
     { '.card[mt:4px]': [
-      { 'div.card-img-top[bgColor:#a37fb2;h:100px]@media': '' },
+      { '.card-img-top[bgColor:#a37fb2;min-height:100px;overflow:hidden]@media': '' },
       { '.card-body': [
         { 'h4@header': data.header || '' },
         { 'p@text': data.text.replace(/\n/g, '<br>') || '' },
@@ -99,10 +99,11 @@ V.createClass('Card', vu => {
 
   vu.method('onEdit', fn => {
     vu.set('onEdit', fn);
-  });
+    return vu;
+  }); // end of Card.onEdit
 
   vu.method('editable', () => {
-    vu.$().prepend(V.dom([
+    vu.$('.card').prepend(V.dom([
       { 'button.btn.btn-primary@editBtn[absolute;max-width:104px;top:8px;right:8px]': 'Edit' }
     ], vu.id));
 
@@ -113,7 +114,6 @@ V.createClass('Card', vu => {
         console.error(err);
       }
     });
-
     return vu;
   }); // end of Card.editable
 
@@ -189,7 +189,7 @@ V.createClass('CardEditor', vu => {
       }, 
       { '.col-sm-10.col-xs-12': [
         { '.card[mt:4px]': [
-          { 'div.card-img-top[bgColor:#a37fb2;h:100px]@media': '' },
+          { 'div.card-img-top[bgColor:#a37fb2;min-height:100px;overflow:hidden]@media': '' },
           { '.card-body': [
             { 'div@text-body': [
               { 'textarea.h3(placeholder="Header")[w:100%;b:none;outline:none]@header': '' },
@@ -338,6 +338,20 @@ V.createClass('CardEditor', vu => {
       });
     });
 
+    vu.$('@media').on('click', evt => {
+      cope.modal
+        //.open()
+        //.title('Choose Photos / Videos')
+        .setUploader({ multi: true, maxWidth: 100 })
+        .getFiles(files => {
+          console.log(files);
+          files.map(x => {
+            vu.$('@media').append(V.dom([['img(src="' + x.thumbDataURL + '")[max-width:100%]']]));
+          });
+        })
+        .chooseFromLocal();
+    });
+
     vu.$('@keyValuesToggler').on('click', evt => {
       let kvTable = vu.$('@kv-table');
       if (kvTable.children().length < 1) {
@@ -470,7 +484,7 @@ V.createClass('PostPreviewCard', vu => {
       { 'div.card-body': [
         { 'h4.card-title@title': '' },
         { 'h6.card-subtitle.text-muted.mb-2@subtitle': '' },
-        { 'p.card-text@text': '' }] 
+        { 'p.card-text.text-truncate.d-block@text': '' }] 
       }] 
     }
   ]);

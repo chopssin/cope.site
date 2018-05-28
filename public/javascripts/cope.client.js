@@ -4,6 +4,194 @@ if (!jQuery) {
   return console.error('require jQuery');
 }
 
+let thumbnailer = function(dataURL, file, options) {
+  let self = {};
+  let maxWidth = options && options.maxWidth || 40;
+  let lobes = options && options.lobes || 1;
+  let myThumb = {};
+  try {
+    let img = new Image();
+    img.onload = function() {
+      // Deal with the image with maxWidth
+      let elem = document.createElement('canvas');
+      myThumb = new Thumbnailer(elem, img, maxWidth, lobes);
+      myThumb.onload = function() {
+        self.dataURL = myThumb.canvas.toDataURL(file.type);
+        self.file = dataURItoBlob(self.dataURL);
+        try {
+          self.onload();
+        } catch (err) {
+          console.error(err);
+        }
+      };
+    }; 
+    img.src= dataURL;
+  } catch (err) {
+    console.error(err);
+  }
+  return self;    
+}; // end of thumbnailer
+
+// returns a function that calculates lanczos weight
+function lanczosCreate(lobes) {
+  return function(x) {
+      if (x > lobes)
+          return 0;
+      x *= Math.PI;
+      if (Math.abs(x) < 1e-16)
+          return 1;
+      let xx = x / lobes;
+      return Math.sin(x) * Math.sin(xx) / x / xx;
+  };
+}
+
+// elem: canvas element, img: image element, sx: scaled width, lobes: kernel radius
+function Thumbnailer(elem, img, sx, lobes) {
+  this.canvas = elem;
+  elem.width = img.width;
+  elem.height = img.height;
+  elem.style.display = "none";
+  this.ctx = elem.getContext("2d");
+  this.ctx.drawImage(img, 0, 0);
+  this.img = img;
+  this.src = this.ctx.getImageData(0, 0, img.width, img.height);
+  this.dest = {
+      width : sx,
+      height : Math.round(img.height * sx / img.width),
+  };
+  this.dest.data = new Array(this.dest.width * this.dest.height * 3);
+  this.lanczos = lanczosCreate(lobes);
+  this.ratio = img.width / sx;
+  this.rcp_ratio = 2 / this.ratio;
+  this.range2 = Math.ceil(this.ratio * lobes / 2);
+  this.cacheLanc = {};
+  this.center = {};
+  this.icenter = {};
+  this.p_unit = Math.ceil(sx / 100);
+  this._progress = 0;
+
+  if ((img.width / sx) < 2) {
+    setTimeout(this.process3, 0, this);
+  } else {
+    setTimeout(this.process1, 0, this, 0);
+  }
+}
+Thumbnailer.prototype.onload = function() {
+  if (this.onload) {
+    this.onload.call();
+  } else {
+        console.log('setTimeout 300 onload');
+    setTimeout(function() {
+      if (this.onload) {
+        this.onload.call();
+      } 
+    }, 300);
+  }
+};
+Thumbnailer.prototype.onprogress = function(_p) {
+  if (this.onprogress) {
+    this.onprogress.call(_p);
+  } else {
+    setTimeout(function() {
+      if (this.onprogress) {
+        this.onprogress.call();
+      } 
+    }, 300);
+  }
+};
+Thumbnailer.prototype.process1 = function(self, u) {
+  if (u % self.p_unit == 0) {
+    self.onprogress(u / self.dest.width);
+  } 
+  self.center.x = (u + 0.5) * self.ratio;
+  self.icenter.x = Math.floor(self.center.x);
+  for (let v = 0; v < self.dest.height; v++) {
+      self.center.y = (v + 0.5) * self.ratio;
+      self.icenter.y = Math.floor(self.center.y);
+      let a, r, g, b;
+      a = r = g = b = 0;
+      for (let i = self.icenter.x - self.range2; i <= self.icenter.x + self.range2; i++) {
+          if (i < 0 || i >= self.src.width)
+              continue;
+          let f_x = Math.floor(1000 * Math.abs(i - self.center.x));
+          if (!self.cacheLanc[f_x])
+              self.cacheLanc[f_x] = {};
+          for (let j = self.icenter.y - self.range2; j <= self.icenter.y + self.range2; j++) {
+              if (j < 0 || j >= self.src.height)
+                  continue;
+              let f_y = Math.floor(1000 * Math.abs(j - self.center.y));
+              if (self.cacheLanc[f_x][f_y] == undefined)
+                  self.cacheLanc[f_x][f_y] = self.lanczos(Math.sqrt(Math.pow(f_x * self.rcp_ratio, 2)
+                          + Math.pow(f_y * self.rcp_ratio, 2)) / 1000);
+              weight = self.cacheLanc[f_x][f_y];
+              if (weight > 0) {
+                  let idx = (j * self.src.width + i) * 4;
+                  a += weight;
+                  r += weight * self.src.data[idx];
+                  g += weight * self.src.data[idx + 1];
+                  b += weight * self.src.data[idx + 2];
+              }
+          }
+      }
+      let idx = (v * self.dest.width + u) * 3;
+      self.dest.data[idx] = r / a;
+      self.dest.data[idx + 1] = g / a;
+      self.dest.data[idx + 2] = b / a;
+  }
+
+  if (++u < self.dest.width)
+      setTimeout(self.process1, 0, self, u);
+  else
+      setTimeout(self.process2, 0, self);
+};
+Thumbnailer.prototype.process2 = function(self) {
+  console.log('process2');
+  self.canvas.width = self.dest.width;
+  self.canvas.height = self.dest.height;
+  self.ctx.drawImage(self.img, 0, 0, self.dest.width, self.dest.height);
+  self.src = self.ctx.getImageData(0, 0, self.dest.width, self.dest.height);
+  let idx, idx2;
+  for (let i = 0; i < self.dest.width; i++) {
+      for (let j = 0; j < self.dest.height; j++) {
+          idx = (j * self.dest.width + i) * 3;
+          idx2 = (j * self.dest.width + i) * 4;
+          self.src.data[idx2] = self.dest.data[idx];
+          self.src.data[idx2 + 1] = self.dest.data[idx + 1];
+          self.src.data[idx2 + 2] = self.dest.data[idx + 2];
+      }
+  }
+  self.ctx.putImageData(self.src, 0, 0);
+  self.canvas.style.display = "block";
+  self.onload();
+};
+Thumbnailer.prototype.process3 = function(self) {
+  console.log('process3: actually just turn img into canvas');
+  self.ctx.putImageData(self.src, 0, 0);
+  self.canvas.style.display = "block";
+  self.onload();
+}
+// end of Thumbnailer
+  
+function dataURItoBlob(dataURI) {
+  // convert base64/URLEncoded data component to raw binary data held in a string
+  let byteString;
+  if (dataURI.split(',')[0].indexOf('base64') >= 0)
+      byteString = atob(dataURI.split(',')[1]);
+  else
+      byteString = unescape(dataURI.split(',')[1]);
+
+  // separate out the mime component
+  let mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+
+  // write the bytes of the string to a typed array
+  let ia = new Uint8Array(byteString.length);
+  for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+  }
+
+  return new Blob([ia], {type:mimeString});
+}; //dataURItoBlob
+
 let readTag = function(tag, val, vuId) {
   let ret = {},
       i, j, parse, tmp, tmp2,
@@ -451,6 +639,169 @@ cope.views = function() {
 
   return V;
 };
+
+cope.modal = function() {
+  let V = cope.views();
+  let modalAPI = {};
+  V.createClass('Cope.Modal', vu => {
+    vu.dom(data => [
+      { 'div[none]': [
+        { 'input@modalFileInput(type="file")': '' },
+        { 'button(data-toggle="modal" data-target="#copeModal")@modalBtn': '' }] 
+      },
+      { '#copeModal.modal.fade(tabindex="-1" role="dialog" aria-labelledby="copeModalLabel" aria-hidden="true")': [
+        { '.modal-dialog(role="document")': [
+          { '.modal-content': [
+            { '.modal-header': [
+              { 'h5.modal-title#copeModalLabel@modalTitle': 'Modal Title' },
+              { 'button.close(type="button" data-dismiss="modal" aria-label="Close")': [
+                { 'span(aria-hidden="true")': '&times;'  }] 
+              }] 
+            },
+            { '.modal-body@modalBody': [
+              { 'div': 'Hello.' }] 
+            },
+            { '.modal-footer@modalFooter': '' }]
+              //{ 'button.btn.btn-secondary(type="button" data-dismiss="modal")': 'Close' },
+              //{ 'button.btn.btn-primary': 'Save' }] 
+            //}] 
+          }] 
+        }] 
+      }
+    ]); // end of Cope.Modal.dom
+
+    vu.method('title', title => {
+      vu.$('@modalTitle').text(title || '');
+      return vu;
+    });
+
+    vu.method('body', fn => {
+      if (typeof fn == 'function') {
+        fn(vu.sel('@modalBody'), vu);
+      }
+      return vu;
+    });
+
+    vu.method('clear', () => {
+      vu.set('options', {});
+      vu.$('@modalFileInput')
+        .prop('multi', false)
+        .val('');
+      vu.$('@modalTitle').text('');
+      vu.$('@modalBody').html('');
+      vu.$('@modalFooter').html('');
+      return vu;
+    });
+
+    vu.method('open', () => {
+      vu.clear();
+      vu.$('@modalBtn').click();
+      return vu;
+    }); // end of Cope.Modal.open
+
+    vu.method('setUploader', options => {
+      vu.clear();
+      if (!options) {
+        options = {};
+      }
+      vu.set('options', options);
+      if (options.multi) {
+        vu.$('@modalFileInput')
+          .prop('multiple', true)
+          .val('');
+      } 
+      return vu;
+    }); // end of Cope.Modal.setUploader
+
+    vu.method('getFiles', fn => {
+      if (typeof fn == 'function') {
+        vu.$('@modalFileInput')
+          .off('change')
+          .on('change', function(evt) {
+            try {
+              let files = evt.target.files;
+              //let readers = [];
+              let resultArr = [];
+              let loadedCount = 0;
+              let options = vu.get('options');
+              for (let i = 0; i < files.length; i++) {
+                let reader = new FileReader();
+                reader.onload = function(evt) {
+                  let thumb = thumbnailer(reader.result, files[i], options);
+                  thumb.onload = function() {
+                    let result = {};
+                    result.file = files[i];
+                    result.dataURL = reader.result;
+                    result.thumbFile = thumb.file;
+                    if (!thumb.file.name) {
+                      result.thumbFile.name = '_thumb_' + files[i].name;
+                    }
+                    result.thumbDataURL = thumb.dataURL;
+                    resultArr[i] = result;
+                    loadedCount++;
+                  };
+                  return;
+                  /*
+                  let img = new Image();
+                  img.onload = function() {
+                    thumb = thumbnailer(img, options.maxWith);
+                    thumb.onload = function() {
+                      let thumbDataURL = thumb.canvas.toDataURL(files[i].type);
+                      let thumbFile = dataURLtoBlob(thumbDataURL);
+                      if (!thumbFile.name) {
+                        thumbFile.name = '_thumb_' + files[i].name;
+                      }
+                      let result = {};
+                      result.file = files[i];
+                      result.dataURL = reader.result;
+
+                      resultArr[i] = result;
+                      loadedCount++;
+                    };
+                    thumb.onprogress = function(progress) {
+                      console.log(progress);
+                    };
+                  }
+                  img.src = evt.target.result;
+                  */
+                } // end of for 
+                reader.readAsDataURL(files[i]);
+                //readers = readers.concat({
+                //  'reader': reader,
+                // 'file': files[i]
+                //});
+              }
+              let waiting = setInterval(function() {
+                if (loadedCount == files.length) {
+                  fn(resultArr);
+                  clearInterval(waiting);
+                }
+              });
+            } catch (err) {
+              console.error(err);
+            }
+          })
+      }
+      return vu;
+    }); // end of Cope.Modal.getFiles
+
+    vu.method('getMediaArr', callback => {
+      // TBD
+    });
+
+    vu.method('chooseFromLocal', () => {
+      vu.$('@modalFileInput').click();
+      return vu;
+    });
+  }); // end of Cope.Modal
+
+  let modal = V.build('Cope.Modal', {
+    sel: 'body',
+    method: 'prepend'
+  });
+
+  return modal;
+}(); // end of cope.modal
 
 return cope;
 
