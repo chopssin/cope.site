@@ -39,7 +39,8 @@ V.createClass('CardsSection', vu => {
           'sel': vu.sel('@cards'),
           'method': 'append',
           'data': cardData.value
-        }).$().on('dblclick', evt => {
+        }).editable()
+          .onEdit(() => {
           V.build('CardEditorSection', {
             sel: '#page-content',
             data: {
@@ -94,7 +95,27 @@ V.createClass('Card', vu => {
         ], vu.id));
       });
     }
+  }); // end of Card.render
+
+  vu.method('onEdit', fn => {
+    vu.set('onEdit', fn);
   });
+
+  vu.method('editable', () => {
+    vu.$().prepend(V.dom([
+      { 'button.btn.btn-primary@editBtn[absolute;max-width:104px;top:8px;right:8px]': 'Edit' }
+    ], vu.id));
+
+    vu.$('@editBtn').on('click', evt => {
+      try {
+        vu.get('onEdit')();
+      } catch (err) {
+        console.error(err);
+      }
+    });
+
+    return vu;
+  }); // end of Card.editable
 
   vu.init(data => {
     vu.render(data);
