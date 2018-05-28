@@ -75,7 +75,7 @@ V.createClass('CardsSection', vu => {
 V.createClass('Card', vu => {
   vu.dom(data => [
     { '.card[mt:4px]': [
-      { 'div.card-img-top[bgColor:#9487a1;h:100px]@media': '' },
+      { 'div.card-img-top[bgColor:#a37fb2;h:100px]@media': '' },
       { '.card-body': [
         { 'h4@header': data.header || '' },
         { 'p@text': data.text.replace(/\n/g, '<br>') || '' },
@@ -189,7 +189,7 @@ V.createClass('CardEditor', vu => {
       }, 
       { '.col-sm-10.col-xs-12': [
         { '.card[mt:4px]': [
-          { 'div.card-img-top[bgColor:#9487a1;h:100px]@media': '' },
+          { 'div.card-img-top[bgColor:#a37fb2;h:100px]@media': '' },
           { '.card-body': [
             { 'div@text-body': [
               { 'textarea.h3(placeholder="Header")[w:100%;b:none;outline:none]@header': '' },
