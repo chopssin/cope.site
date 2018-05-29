@@ -342,11 +342,13 @@ V.createClass('CardEditor', vu => {
       cope.modal
         //.open()
         //.title('Choose Photos / Videos')
-        .setUploader({ multi: true, maxWidth: 100 })
+        .setUploader({ multi: true, maxWidth: 600 })
         .getFiles(files => {
           console.log(files);
           files.map(x => {
-            vu.$('@media').append(V.dom([['img(src="' + x.thumbDataURL + '")[max-width:100%]']]));
+            //vu.$('@media').append(V.dom([['img(src="' + x.thumbDataURL + '")[max-width:100%]']]));
+            x.img.style.width = '100%';
+            vu.$('@media').append(x.img);
           });
         })
         .chooseFromLocal();

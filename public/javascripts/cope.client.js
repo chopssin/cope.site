@@ -4,6 +4,7 @@ if (!jQuery) {
   return console.error('require jQuery');
 }
 
+/*
 let thumbnailer = function(dataURL, file, options) {
   let self = {};
   let maxWidth = options && options.maxWidth || 40;
@@ -171,6 +172,7 @@ Thumbnailer.prototype.process3 = function(self) {
   self.onload();
 }
 // end of Thumbnailer
+*/
   
 function dataURItoBlob(dataURI) {
   // convert base64/URLEncoded data component to raw binary data held in a string
@@ -723,54 +725,21 @@ cope.modal = function() {
               //let readers = [];
               let resultArr = [];
               let loadedCount = 0;
-              let options = vu.get('options');
+              let options = vu.get('options') || {};
+              options.orientation = true;
               for (let i = 0; i < files.length; i++) {
-                let reader = new FileReader();
-                reader.onload = function(evt) {
-                  let thumb = thumbnailer(reader.result, files[i], options);
-                  thumb.onload = function() {
-                    let result = {};
-                    result.file = files[i];
-                    result.dataURL = reader.result;
-                    result.thumbFile = thumb.file;
-                    if (!thumb.file.name) {
-                      result.thumbFile.name = '_thumb_' + files[i].name;
-                    }
-                    result.thumbDataURL = thumb.dataURL;
-                    resultArr[i] = result;
-                    loadedCount++;
-                  };
-                  return;
-                  /*
-                  let img = new Image();
-                  img.onload = function() {
-                    thumb = thumbnailer(img, options.maxWith);
-                    thumb.onload = function() {
-                      let thumbDataURL = thumb.canvas.toDataURL(files[i].type);
-                      let thumbFile = dataURLtoBlob(thumbDataURL);
-                      if (!thumbFile.name) {
-                        thumbFile.name = '_thumb_' + files[i].name;
-                      }
-                      let result = {};
-                      result.file = files[i];
-                      result.dataURL = reader.result;
-
-                      resultArr[i] = result;
-                      loadedCount++;
-                    };
-                    thumb.onprogress = function(progress) {
-                      console.log(progress);
-                    };
-                  }
-                  img.src = evt.target.result;
-                  */
-                } // end of for 
-                reader.readAsDataURL(files[i]);
-                //readers = readers.concat({
-                //  'reader': reader,
-                // 'file': files[i]
-                //});
-              }
+                let loader = loadImage(files[i], function(img) {
+                  let prefix = '_scaled_' + (options && options.maxWidth) + '_';
+                  let result = {};
+                  result.originalFile = files[0];
+                  result.img = img; // it should be a canvas
+                  result.imgFile = dataURItoBlob(img.toDataURL());
+                  result.imgFile.name = prefix + files[0].name;
+                  console.log(result);
+                  loadedCount++;
+                  resultArr[i] = result;
+                }, options);
+              } // end of for
               let waiting = setInterval(function() {
                 if (loadedCount == files.length) {
                   fn(resultArr);
@@ -784,10 +753,6 @@ cope.modal = function() {
       }
       return vu;
     }); // end of Cope.Modal.getFiles
-
-    vu.method('getMediaArr', callback => {
-      // TBD
-    });
 
     vu.method('chooseFromLocal', () => {
       vu.$('@modalFileInput').click();
