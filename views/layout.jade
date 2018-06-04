@@ -7,7 +7,7 @@ html
     link( rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700|Roboto+Slab:400,700|Material+Icons" )
     link( rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/latest/css/font-awesome.min.css" )
     link( rel="stylesheet" href="/stylesheets/material-dashboard.css")
-  body
+  body(style="min-height:100vh")
     block content
     script( src='https://code.jquery.com/jquery-3.2.1.min.js' )
     script( src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.0/umd/popper.min.js" integrity="sha384-cs/chFZiN24E4KMATLdqdvsezGxaGsi4hLGOzlXwp5UZB1LY//20VyM2taTB4QvJ" crossorigin="anonymous" )
@@ -16,4 +16,16 @@ html
     script( src="/javascripts/cope.client.js" )
     script( src="/javascripts/bootstrap-material-design.js" )
     script( src="/javascripts/material-dashboard.js" )
+    script( src="https://www.gstatic.com/firebasejs/5.0.4/firebase.js" )
+    script.
+      // Initialize Firebase
+      var config = {
+        apiKey: "AIzaSyCctAk5CKvbEVFv1i02xpD1-6nkSiTeQhU",
+        authDomain: "cope-ai.firebaseapp.com",
+        databaseURL: "https://cope-ai.firebaseio.com",
+        projectId: "cope-ai",
+        storageBucket: "cope-ai.appspot.com",
+        messagingSenderId: "116547134853"
+      };
+      firebase.initializeApp(config);
     block javascripts

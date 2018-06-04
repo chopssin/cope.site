@@ -1,300 +1,132 @@
-let tests = [];
-let curr = null;
+let runTests = function() {
+
 let V = cope.views();
-let DS = V.dataStore();
-let send = function() {
-  console.log(arguments);
-  return cope.send.apply(null, arguments);
-}
-let msg = function(res) {
-  console.log(res);
-  let makePost = function(data) {
-    let post = null;
-    if (!data || (!data.title && !data.content)) {
-      return post;
-    }
-    post = {};
-    post.title = data.title || null;
-    if (!Array.isArray(data.content)) {
-      console.warn(data);
-      try {
-        data.content = JSON.parse(data.content);
-      } catch (err) {
-        data.content = [];
-      }
-    }
-    post.content = data.content
-      .map(p => {
-        let para = {};
-        if (p.link) {
-          para.div = [
-            [ 'a(href="' + p.link + '")', [
-              { 'h3': p.header || '' },
-              { 'p': p.text || '' }] 
-            ]
-          ];
-        } else if (p.imgsrc) {
-          para.div = [
-            [ 'img(src="' + p.imgsrc + '")' ],
-            { 'h3': p.header || '' },
-            { 'p': p.text || '' }
-          ]
-        } else {
-          para.div = [
-            { 'h3[mt:16px; mb:8px]': p.header || '' }, 
-            { 'p[mt:0]': p.text || '' }
-          ]
-        }
-        return para;
-      });
-    console.log(post);
-    return post;
-  };
-  let post = makePost(res && res.data && res.data.value);
-  if (post) {
-    V.build('post', {
-      sel: '#posts', 
-      method: 'append',
-      data: {
-        title: post.title,
-        content: post.content
-      }
-    })
-  }
-};
-
-let next = function(obj) {
-  curr = null;
-  if (tests.length > 0) {
-    curr = tests[0];
-    tests = tests.slice(1);
-    curr(obj);
-  }
-};
-
-let test = function(func) {
-  tests = tests.concat(func);
-  if (!curr) {
-    next();
-  }
-};
-
-// Start tests
-test(() => {
-  V.createClass('post', vu => {
-    vu.dom(data => [
-      { 'div[color:#333; b:2px solid #333; p:16px 32px; mt:12px]': [
-        { 'h2@title': data.title || '' },
-        { 'p@previewText[cursor:pointer; fz:50px]': '' },
-        { '@content': data.content || '' }]
-      }
-    ]);
-
-    vu.init(data => {
-      vu.$()
-        .on('mouseenter', evt => {
-          vu.$().css('background-color', '#aca'); 
-          vu.$('@previewText').html(data.text); 
-        })
-        .on('mouseleave', evt => {
-          vu.$().css('background-color', 'transparent'); 
-          vu.$('@previewText').html(''); 
-        });
-
-      let text = vu.$('@previewText');
-      text
-        .on('mouseenter', evt => { text.css('font-weight','800'); })
-        .on('mouseleave', evt => { text.css('font-weight', 'normal'); })
-        .on('click', evt => {
-          text.fadeOut();
-          next();
-        })
-    });
-  });
-
-  V.build('post', {
-    sel: '#msg',
-    data: {
-      title: 'Welcome to Cope client tests',
-      text: 'Click to start'
-    }
-  });
-
-});
-
-test(() => {
-  let snap = {};
-  send('/account/add', {
-    email: 'test@xmail.com',
-    pwd: 'test',
-    confirmedPwd: 'test'
-  }).then(res => {
-    msg(res);
-    snap.myId = res.data.userId;
-    snap.myPwd = 'test';
-    next(snap);
-  })
-});
-
-test(snap => {
-  // use `snap.account.userId`
-  send('/profile/get', {
-    //userId: snap.account.userId
-    email: 'test@xmail.com'
-  }).then(res => {
-    msg(res);
-    next(snap);
-  });
-});
-
-test(snap => {
-  send('/account/signin', {
-    email: 'test@xmail.com',
-    pwd: 'test'
-  }).then(res => {
-    msg(res);
-    next(snap);
-  });
-});
-
-test(snap => {
-  send('/app/add', {
-    appName: '智能旅圖'
-  }).then(res => {
-    msg(res);
-    snap.myAppId = res.data.appId;
-    next(snap);
-  });
-});
-
-test(snap => {
-  send('/post/add', {
-    appId: snap.myAppId,
-    title: '深入四草' 
-  }).then(res => {
-    msg(res);
-    snap.myPostId = res.data.postId;
-    next(snap);
-  });
-});
-
-test(snap => {
-  let c = JSON.stringify([
-    { 
-      'text': 'Text goes here.',
-      'header': 'Text'
-    },
-    {
-      'header': 'Image',
-      'text': 'Image is cool.',
-      'imgsrc': 'https://fakeimg.pl/250x100/'
-    },
-    {
-      'text': 'This is a link.',
-      'link': 'http://www.comicbus.com/html/1725.html'
+V.createClass('Stat', vu => {
+  vu.dom(data => [
+    { 'div[block; position:relative; fz:20px; m:4px auto; w:100%; max-width:600px]': [
+      { 'div[bgColor:#fff; w:100%; h:56px]': [
+        { 'div[float:left; w:10%; h:100%; bgColor:red]@stat': '' },
+        { 'div[float:left; w:90%; h:100%; p:16px]@msg': '' }] 
+      },
+      { 'div@display[w:100%;bgColor:#fff]': '' }]
     }
   ]);
-  send('/post/update', {
-    postId: snap.myPostId,
-    content: c
-  }).then(res => {
-    msg(res);
-    next(snap);
+
+  vu.method('ok', () => {
+    vu.$('@stat')
+      .css('background-color', 'green');
+  });
+
+  vu.method('fail', () => {
+    vu.$('@stat')
+      .css('background-color', 'red');
+  });
+
+  vu.method('msg', text => {
+    vu.$('@msg').html(text);
   });
 });
 
-/*
-test(snap => {
-  send('/post/all').then(res => {
-    next(snap);
-  });
-});
-*/
-
-test(snap => {
-  send('/account/signout').then(res => {
-    msg(res);
-    next(snap);
-  });
-});
-
-test(snap => {
-  send('/post/get', {
-    postId: snap.myPostId
-  }).then(res => {
-    msg(res);
-    next(snap);
-  });
-});
-
-test(snap => {
-  send('/account/signin', {
-    email: 'test@xmail.com',
-    pwd: 'test'
-  }).then(res => {
-    msg(res);
-    next(snap);
-  });
-});
-
-test(snap => {
-  send('/post/all').then(res => {
-    msg(res);
-    next(snap);
-  });
-});
-
-test(snap => {
-  send('/post/del', {
-    postId: snap.myPostId
-  }).then(res => {
-    msg(res);
-    next(snap);
-  });
-});
-
-test(snap => {
-  send('/app/del', {
-    appId: snap.myAppId
-  }).then(res => {
-    msg(res);
-    next(snap);
-  });
-});
-
-test(snap => {
-  send('/account/signout').then(res => {
-    msg(res);
-    next(snap);
-  });
-});
-
-test(snap => {
-  send('/account/del', {
-    //userId: snap.account.userId
-    email: 'test@xmail.com',
-    pwd: 'test',
-    confirmedPwd: 'test'
-  }).then(res => {
-    msg(res);
-    next(snap);
-  });
-})
-
-test(snap => {
-  // use `snap.account.userId`
-  send('/profile/get', {
-    //userId: snap.account.userId
-    email: 'test@xmail.com'
-  }).then(res => {
-    msg(res);
-    V.build('post', {
-      sel: '#posts',
-      method: 'append',
-      data: {
-        title: 'All tests completed.'
-      }
+let tests = cope.queue();
+let test = function(msg, testFn) {
+  tests.add(next => {
+    let statVu = V.build('Stat', {
+      sel: '#wrap',
+      method: 'append'
     });
-    next(snap);
+    statVu.msg(msg);
+    testFn(next, statVu);
   });
+}; // end of test
+
+test('Start with function `test`', (next, stat) => {
+  stat.ok();
+  next();
 });
+
+test('cope.fileLoader: upload / download files', (next, stat) => {
+  let waitUploader = false;
+  let files = [];
+  let loader = cope.fileLoader(newFiles => {
+    files = files.concat(newFiles);
+    newFiles.map(x => {
+      stat.$('@images').append(x.img);
+    });
+    if (files.length == 2) {
+      if (!waitUploader) {
+        stat.$('@display').fadeOut(5000);
+      }
+      stat.ok();
+    }
+  });
+
+  stat.$('@display').append(V.dom([
+    [ 'div', [
+      { 'button@uploadBtn': 'Upload multiple files' },
+      { 'div@images[w:100%; max-width:600px]': '' }]
+    ]
+  ], stat.id));
+
+  stat.$('@uploadBtn').click(evt => {
+    loader.upload({ multi: true });
+    waitUploader = true;
+  });
+
+  loader.download('https://source.unsplash.com/random', { maxWidth: 800 });
+  setTimeout(function() {
+    loader.download('https://source.unsplash.com/random', { maxWidth: 300 });
+  }, 5000);
+
+  next();
+}); // end of test('cope.fileLoader')
+
+test('Upload to firebase', (next, stat) => {
+  let store = firebase.storage();
+  console.log(store);
+  let loader = cope.fileLoader(files => {
+    files.map(file => {
+      let thing = file.originalFile || file.blob;
+      let dataURL = file.dataURL;
+      let storeRef = store.ref().child('tests/' + file.filename);
+      let task;
+      if (thing) { 
+        task = storeRef.put(thing);
+      } else if (dataURL) {
+        task = storeRef.putString(dataURL, 'data_url');
+      }
+      task.then(snap => {
+        snap.ref.getDownloadURL().then(url => {
+          console.log(url);
+        }); 
+      });
+
+      task.on(firebase.storage.TaskEvent.STATE_CHANGED, {
+        complete: function() { 
+          task.snapshot.ref.getDownloadURL().then(downloadURL => {
+            console.log(downloadURL);
+          });
+        },
+        error: function(err) { console.error(err); }
+      });
+    });
+  });
+
+  stat.$('@display').html(V.dom([
+    { 'div': [
+      { 'button@uploadBtn': 'Upload one file' },
+      { 'div@images[w:100%; max-width:600px]': '' }]
+    }
+  ], stat.id));
+
+  stat.$('@uploadBtn').click(evt => {
+    loader.upload({ 'maxWidth': 100 });
+  });
+  next();
+});
+
+test('End with this test', (next, stat) => {
+  stat.ok();
+  next();
+});
+
+}(); // end of runTests

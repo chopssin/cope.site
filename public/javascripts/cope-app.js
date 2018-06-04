@@ -345,10 +345,23 @@ V.createClass('CardEditor', vu => {
         .setUploader({ multi: true, maxWidth: 600 })
         .getFiles(files => {
           console.log(files);
-          files.map(x => {
-            //vu.$('@media').append(V.dom([['img(src="' + x.thumbDataURL + '")[max-width:100%]']]));
+          files.map((x, i) => {
             x.img.style.width = '100%';
+            x.img.draggable = true;
+            x.img.onclick = function() {
+              x.img.parentNode.removeChild(x.img);
+            };
             vu.$('@media').append(x.img);
+            return;
+            // TBD
+            cope.send('/image/upload', {
+              file: x.blob
+            }).then(res => {
+              console.log(res);
+              let url = res.data.url;
+              // TBD: Deal with uploaded and uploading files 
+
+            });
           });
         })
         .chooseFromLocal();

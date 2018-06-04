@@ -312,7 +312,7 @@ let readTag = function(tag, val, vuId) {
       }
     });
     
-    ['absolute', 'relatvie', 'fixed'].map(s => {
+    ['absolute', 'relative', 'fixed'].map(s => {
       if (x == s) {
         style = 'position:' + x;
       }
@@ -582,7 +582,16 @@ let newDS = function() {
 }; // end of newDS
 
 let cope = {};
-
+cope.randId = function(len) {
+  if (!len) { len = 5 }
+  let id = '';
+  let seed = '1234567890-_qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM';
+  for (let i = 0; i < len; i++) {
+    s = seed.charAt(Math.floor(Math.random() * seed.length));
+    id += s;
+  }
+  return id;
+};
 cope.send = function(path, params, method) {
   return new Promise((resolve, reject) => {
     let cmd = {};
@@ -640,11 +649,121 @@ cope.views = function() {
   }; // end of V.class
 
   return V;
-};
+}; // end of cope.views
 
+cope.queue = function() {
+  let queueAPI = {};
+  let funcs = [];
+  let running = null;
+  let next = function() {
+    if (funcs.length > 0) {
+      running = funcs[0];
+      funcs = funcs.slice(1);
+      try {
+        running(next);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+  queueAPI.add = function(fn) {
+    if (typeof fn != 'function') {
+      throw 'cope.queue().add(fn): fn should be function';
+    }
+    funcs = funcs.concat(fn);
+    if (!running || funcs.length == 1) {
+      next();
+    }
+    return queueAPI;
+  };
+  return queueAPI;
+}; // end of cope.queue
+
+cope.fileLoader = function(onload) {
+  if (typeof onload != 'function') {
+    console.error(onload);
+    throw 'cope.fileLoader(<function>onload): invalid onload';
+  }
+  let loaderAPI = {};
+  loaderAPI.download = function(url, options) {
+    try {
+      let loader = loadImage(url, img => {
+        if (img.type == 'error') {
+          return;
+        }
+        if (options && options.maxWidth) {
+          img.style.maxWidth = options.maxWidth + 'px';
+          img.style.width = '100%';
+          img.style.height = 'auto';
+        }
+        let result = {};
+        result.img = img;
+        result.url = url;
+        onload([result]);
+      }); 
+    } catch (err) {
+      console.error(err);
+    }
+  }; // end of loaderAPI.download
+  loaderAPI.upload = function(options) {
+    let inputId = '#_tmp_'; //+ cope.randId();
+    $('body').append(cope.views().dom([
+      { 'div[none]': [
+        [ 'input' + inputId + '(type="file")' ]
+      ] },
+    ]));
+    let $fileInput = $(inputId);
+    $fileInput.on('change', evt => {
+      $fileInput.remove();
+      try {
+        let files = evt.target.files;
+        let resultArr = [];
+        let loadedCount = 0;
+        if (!options) {
+          options = {};
+        }
+        options.orientation = true;
+        for (let i = 0; i < files.length; i++) {
+          let loader = loadImage(files[i], function(img) {
+            loadedCount++;
+            if (img.type != 'error') {
+              let prefix = options && options.maxWidth ? '_scaled_' + options.maxWidth + '_' : '';
+              let filename = files[i].name || 'no-name';
+              let result = {};
+              result.originalFile = files[0];
+              result.img = img; // it should be a canvas
+              result.dataURL = img.toDataURL();
+              result.blob = dataURItoBlob(img.toDataURL());
+              result.blob.name = prefix + filename;
+              result.filename = prefix + filename;
+              resultArr[i] = result;
+            }
+          }, options);
+        } // end of for
+        let waiting = setInterval(function() {
+          if (loadedCount == files.length) {
+            onload(resultArr);
+            clearInterval(waiting);
+          }
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }); // end of onchange
+
+    $fileInput
+      .prop('multiple', options && options.multi || false)
+      .val('');
+    $fileInput.click();
+  }; // end of loaderAPI.upload
+  return loaderAPI;
+}; // end of cope.fileLoader
+
+/*
 cope.modal = function() {
   let V = cope.views();
   let modalAPI = {};
+  let filesOnload = null;
   V.createClass('Cope.Modal', vu => {
     vu.dom(data => [
       { 'div[none]': [
@@ -685,15 +804,17 @@ cope.modal = function() {
     });
 
     vu.method('clear', () => {
+      filesOnload = null;
       vu.set('options', {});
       vu.$('@modalFileInput')
-        .prop('multi', false)
+        .off('change')
+        .prop('multiple', false)
         .val('');
       vu.$('@modalTitle').text('');
       vu.$('@modalBody').html('');
       vu.$('@modalFooter').html('');
       return vu;
-    });
+    }); // end of Cope.Modal.clear
 
     vu.method('open', () => {
       vu.clear();
@@ -707,7 +828,7 @@ cope.modal = function() {
         options = {};
       }
       vu.set('options', options);
-      if (options.multi) {
+      if (options['multi']) {
         vu.$('@modalFileInput')
           .prop('multiple', true)
           .val('');
@@ -717,27 +838,28 @@ cope.modal = function() {
 
     vu.method('getFiles', fn => {
       if (typeof fn == 'function') {
+        filesOnload = fn;
         vu.$('@modalFileInput')
           .off('change')
           .on('change', function(evt) {
             try {
               let files = evt.target.files;
-              //let readers = [];
               let resultArr = [];
               let loadedCount = 0;
               let options = vu.get('options') || {};
               options.orientation = true;
               for (let i = 0; i < files.length; i++) {
                 let loader = loadImage(files[i], function(img) {
-                  let prefix = '_scaled_' + (options && options.maxWidth) + '_';
-                  let result = {};
-                  result.originalFile = files[0];
-                  result.img = img; // it should be a canvas
-                  result.imgFile = dataURItoBlob(img.toDataURL());
-                  result.imgFile.name = prefix + files[0].name;
-                  console.log(result);
                   loadedCount++;
-                  resultArr[i] = result;
+                  if (img.type != 'error') {
+                    let prefix = '_scaled_' + (options && options.maxWidth) + '_';
+                    let result = {};
+                    result.originalFile = files[0];
+                    result.img = img; // it should be a canvas
+                    result.blob = dataURItoBlob(img.toDataURL());
+                    result.blob.name = prefix + files[0].name;
+                    resultArr[i] = result;
+                  }
                 }, options);
               } // end of for
               let waiting = setInterval(function() {
@@ -754,6 +876,49 @@ cope.modal = function() {
       return vu;
     }); // end of Cope.Modal.getFiles
 
+    vu.method('addDismissButton', (btnName, onclick, callback) => {
+      let btnComp = '@' + cope.randId();
+      vu.$('@modalFooter').append(V.dom([
+        [ 'button.btn.btn-secondary(type="button" data-dismiss="modal")' + btnComp, btnName ]
+      ], vu.id));
+      if (typeof onclick == 'function') {
+        vu.$(btnComp).on('click', function(evt) {
+          onclick(evt, vu.$(btnComp));
+        });
+      }
+      if (typeof callback == 'function') {
+        callback(vu.$(btnComp));
+      }
+      return vu;
+    }); // end of Cope.Modal.addDismissButton
+
+    vu.method('loadImageFromURL', url => {
+      try {
+        let options = vu.get('options') || {};
+        let loader = loadImage(url, img => {
+          console.log(img);
+          if (img.type == 'error') {
+            return vu;
+          }
+          //let prefix = '_scaled_' + (options && options.maxWidth) + '_';
+          //let canvas = document.createElement('canvas');
+          //canvas.width = img.width;
+          //canvas.height = img.height;
+          //let ctx = canvas.getContext('2d');
+          //ctx.drawImage(img, 0, 0);
+          let result = {};
+          result.img = img;
+          result.url = url;
+          //result.blob = dataURItoBlob(canvas.toDataURL());
+          //result.blob.name = prefix + cope.randId();
+          filesOnload([result]);
+        }); 
+      } catch (err) {
+        console.error(err);
+      }
+      return vu;
+    });
+
     vu.method('chooseFromLocal', () => {
       vu.$('@modalFileInput').click();
       return vu;
@@ -767,6 +932,7 @@ cope.modal = function() {
 
   return modal;
 }(); // end of cope.modal
+*/
 
 return cope;
 

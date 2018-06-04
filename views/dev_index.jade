@@ -1,12 +1,7 @@
 extends layout
 
 block content
-  h1= title
-  #msg
-  #buttons
-  #posts
-
+  h1( style="padding:20px" ) Cope Tests
+  #wrap( style="width:100%; height:100%; padding:20px" )
 block javascripts
-  script( src="/socket.io/socket.io.js" )
-  script( src="/javascripts/cope.client.js" )
   script( src="/javascripts/dev.js" )
