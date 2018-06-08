@@ -687,7 +687,7 @@ cope.fileLoader = function(onload) {
   let loaderAPI = {};
   loaderAPI.download = function(url, options) {
     try {
-      let loader = loadImage(url, img => {
+      loadImage(url, img => {
         if (img.type == 'error') {
           return;
         }
@@ -697,14 +697,21 @@ cope.fileLoader = function(onload) {
           img.style.height = 'auto';
         }
         let result = {};
-        result.img = img;
         result.url = url;
+        result.image = {};
+        result.image.img = img;
+
+        //let c = document.createElement("canvas");
+        //let ctx = c.getContext('2d');
+        //ctx.drawImage(img, 0, 0);
+        //result.image.dataURL = c.toDataURL();
         onload([result]);
       }); 
     } catch (err) {
       console.error(err);
     }
   }; // end of loaderAPI.download
+
   loaderAPI.upload = function(options) {
     let inputId = '#_tmp_'; //+ cope.randId();
     $('body').append(cope.views().dom([
@@ -724,19 +731,34 @@ cope.fileLoader = function(onload) {
         }
         options.orientation = true;
         for (let i = 0; i < files.length; i++) {
-          let loader = loadImage(files[i], function(img) {
+          let result = {};
+          result.file = files[i];
+          result.filename = files[i].name || 'no-name';
+          resultArr[i] = result;
+
+          //let loader = 
+          loadImage(files[i], function(img) {
             loadedCount++;
             if (img.type != 'error') {
+              let image = {};
               let prefix = options && options.maxWidth ? '_scaled_' + options.maxWidth + '_' : '';
-              let filename = files[i].name || 'no-name';
-              let result = {};
+              /*
               result.originalFile = files[0];
               result.img = img; // it should be a canvas
               result.dataURL = img.toDataURL();
               result.blob = dataURItoBlob(img.toDataURL());
               result.blob.name = prefix + filename;
               result.filename = prefix + filename;
-              resultArr[i] = result;
+              */
+              try {
+                image.name = prefix + resultArr[i].filename;
+                image.img = img; // it should be a canvas
+                image.dataURL = img.toDataURL();
+                image.blob = dataURItoBlob(img.toDataURL());
+                resultArr[i].image = image;
+              } catch (err) {
+                console.error(err); 
+              }
             }
           }, options);
         } // end of for
