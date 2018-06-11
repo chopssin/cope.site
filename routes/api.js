@@ -88,7 +88,7 @@ let parse = function(body) {
   return obj; 
 };
 
-let setAPI = function(method, apiPath, modelName, modelMethod) {
+let setAPI = function(method, apiPath, modelName, modelMethod, callbackBeforeResponse) {
   router[method](apiPath, function(req, res, next) {
     let body = req.body || null;
     let obj = parse(body);
@@ -109,7 +109,11 @@ let setAPI = function(method, apiPath, modelName, modelMethod) {
 
     M.model(modelName)[modelMethod](obj, userData, params)
       .then(data => {
-      res.send({ ok: true, data: data || null });
+      if (typeof callbackBeforeResponse == 'function') {
+        callbackBeforeResponse(data, req, res, next);
+      } else {
+        res.send({ ok: true, data: data || null });
+      }
     }).catch(err => {
       res.send({ ok: false, err: err });
     });
@@ -117,7 +121,10 @@ let setAPI = function(method, apiPath, modelName, modelMethod) {
 }; // end of setAPI
 
 setAPI('post', '/account/add', 'cope/user', 'addAccount');
-setAPI('post', '/account/del', 'cope/user', 'delAccount');
+setAPI('post', '/account/del', 'cope/user', 'delAccount', (data, req, res) => {
+  req.session.copeUserData = null;
+  res.send({ ok: true, data: data });
+});
 setAPI('post', '/profile/get', 'cope/user', 'getProfile');
 
 setAPI('post', '/app/add', 'cope/app', 'addApp');
@@ -138,6 +145,12 @@ setAPI('post', '/card/get', 'cope/card', 'get');
 setAPI('post', '/card/all', 'cope/card', 'getMany');
 setAPI('post', '/card/update', 'cope/card', 'update');
 
+setAPI('post', '/file/add', 'cope/file', 'add');
+setAPI('post', '/file/del', 'cope/file', 'del');
+setAPI('post', '/file/get', 'cope/file', 'get');
+setAPI('post', '/file/all', 'cope/file', 'getMany');
+setAPI('post', '/file/update', 'cope/file', 'update');
+
 // Define APIs which requires more flexible and custom design
 router.post('/account/me', function(req, res, next) {
   if (req.session && req.session.copeUserData) {
@@ -157,8 +170,10 @@ router.post('/account/signin', function(req, res, next) {
       res.send({ ok: true, data: req.session.copeUserData });
     } else {
       debug('[ERR] failed to access req.session');
-      res.send({ ok: false });
+      res.send({ ok: false, data: data });
     }
+  }).catch(err => {
+    res.send({ ok: false, err: err });
   });
 });
 

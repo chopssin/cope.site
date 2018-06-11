@@ -663,7 +663,7 @@ module.exports = function() {
       }
       return new Promise((resolve, reject) => {
         if (!query) {
-          reject(debug('[ERR] graphAPI.findNodes(query): Invalid query'));
+          reject(debug('[ERR] graphAPI.findNodes(query): Invalid query.'));
           return;
         } 
         db.useMongo(mg => {
@@ -708,7 +708,7 @@ module.exports = function() {
       }
       return new Promise((resolve, reject) => {
         if (!query) {
-          reject(debug('[ERR] graphAPI.findLinks(query): Invalid query'));
+          reject(debug('[ERR] graphAPI.findLinks(query): Invalid query.'));
           return;
         }
         db.useMongo(mg => {
@@ -887,7 +887,7 @@ module.exports = function() {
         if (typeof fn == 'function') {
           funcs[name] = fn;
         } else {
-          debug('setFn(name, fn): invalid arguments', name, fn);
+          debug('setFn(name, fn): Invalid arguments.', name, fn);
         }
       }; // end of setFn
 
@@ -999,8 +999,8 @@ module.exports = function() {
                 }); 
               });
             } else {
-              debug('Invalid query', validQueries);
-              reject('Invalid query');
+              debug('Invalid query.', validQueries);
+              reject('Invalid query.');
             }
           });
         });
@@ -1013,8 +1013,8 @@ module.exports = function() {
               || !validParams.query
               || !validParams.updates 
               || validParams.updates.id) {
-              debug('Invalid updates or query', validParams);
-              reject('Invalid updates or query');
+              debug('Invalid updates or query.', validParams);
+              reject('Invalid updates or query.');
               return;
             }
             try {

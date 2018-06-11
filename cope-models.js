@@ -25,8 +25,8 @@ module.exports = function() {
                 resolve(newUserNode.snap.data());
               }
             });
-          }); 
-        }); // end of check
+          }).catch(err => { reject(err); }); 
+        }).catch(err => { reject(err); }); // end of check
       }); // end of Promise
     }); // end of `addAccount`
 
@@ -36,8 +36,8 @@ module.exports = function() {
         model.checkDelAccount(obj, userData).then(valid => {
           model.node(valid.nodeId).del().then(() => {
             resolve('Account deleted.');
-          }); 
-        }); // end of check
+          }).catch(err => {reject(err); }); 
+        }).catch(err => { reject(err); }); // end of check
       }); // end of Promise
     }); // end of `addAccount`
 
@@ -63,6 +63,8 @@ module.exports = function() {
           x.fetchData().next(() => {
             if (x.nodeId()) {
               resolve(x.snap.data());
+            } else {
+              resolve(null);
             }
           }); // end of x.fetchData
         });
@@ -74,16 +76,25 @@ module.exports = function() {
         let email = obj.email;
         let pwd = obj.pwd;
         let confirmedPwd = obj.confirmedPwd;
+        if (typeof email != 'string'
+          || typeof pwd != 'string'
+          || email.charAt('@') < 1
+          || email.length < 1
+          || pwd.length < 1) {
+          reject('Invalid email/password');
+          return;
+        }
         if (pwd === confirmedPwd) {
           let u = M.model('cope/user').node({
-            email: email,
-            pwd: pwd
+            email: email
           });
           u.next(() => {
             if (!u.nodeId()) { // node not existed
               resolve({
                 email: email, pwd: pwd
               });
+            } else {
+              reject('User existed.')
             }
           });
         }
@@ -105,6 +116,8 @@ module.exports = function() {
               resolve({
                 nodeId: u.nodeId()
               });
+            } else {
+              reject('User not found.');
             }
           });
         }
@@ -155,6 +168,8 @@ module.exports = function() {
             }).link('appOwner', valid.ownerNodeId).next(() => {
               resolve(newApp.snap.data());
             });
+          }).catch(err => {
+            reject(err);
           });
         }); // end of checkAddApp
       }); // end of Promise
@@ -384,7 +399,7 @@ module.exports = function() {
       return new Promise((resolve, reject) => {
         model.checkDelPost(obj, userData).then(valid => {
           model.node(valid.postNodeId).del().then(() => {
-            resolve('Post deleted');
+            resolve('Post deleted.');
           });
         });
       });
@@ -407,7 +422,7 @@ module.exports = function() {
                 }
               });
               if (!postData) {
-                resolve('Post not found');
+                resolve('Post not found.');
               } else {
                 if (isCreator) {
                   resolve(postData);
@@ -491,7 +506,7 @@ module.exports = function() {
           || null;
 
         if (!obj || !obj.postId || !copeUserNodeId) {
-          return reject('Invalid query or failed to authenticate the user');
+          return reject('Invalid query or failed to authenticate the user.');
         }
 
         if (obj && (obj.content 
@@ -511,7 +526,7 @@ module.exports = function() {
         }
 
         if (!updates) {
-          return reject('Invalid updates');
+          return reject('Invalid updates.');
         }
 
         let postNode = model.node({ postId: obj.postId });
@@ -668,6 +683,8 @@ module.exports = function() {
       });
     });
   }); // end of "cope/card"
+
+  M.createModel('cope/file');
 
   return false;
 }();

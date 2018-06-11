@@ -67,13 +67,11 @@ test('Start with function `test`', (next, stat) => {
   next();
 });
 
-test('cope.fileLoader: upload / download files', (next, stat) => {
-  let waitUploader = false;
+test('cope.fileLoader: download files', (next, stat) => {
   let files = [];
   let loader = cope.fileLoader(newFiles => {
     files = files.concat(newFiles);
     newFiles.map(x => {
-      console.log(x);
       if (x.image) {
         stat.$('@images').append(x.image.img);
       }
@@ -85,15 +83,9 @@ test('cope.fileLoader: upload / download files', (next, stat) => {
 
   stat.$('@display').append(V.dom([
     [ 'div', [
-      { 'button@uploadBtn': 'Upload multiple files' },
       { 'div@images[w:100%; max-width:600px]': '' }]
     ]
   ], stat.id));
-
-  stat.$('@uploadBtn').click(evt => {
-    loader.upload({ multi: true });
-    waitUploader = true;
-  });
 
   loader.download('https://source.unsplash.com/random', { maxWidth: 800 });
   setTimeout(function() {
@@ -103,23 +95,200 @@ test('cope.fileLoader: upload / download files', (next, stat) => {
   next();
 }); // end of test('cope.fileLoader')
 
-test('Upload to firebase', (next, stat) => {
+test('Signin / Signout Flow', (next, stat) => {
+  let state = function(action, newState) {
+    let prevState = 'none';
+    let valid = {
+      'none': {
+        'signUp': 'existed'
+      },
+      'existed': {
+        'signIn': 'signedIn',
+        'del': 'none'
+      },
+      'signedIn': {
+        'signIn': 'signedIn',
+        'signOut': 'existed',
+        'del': 'none'
+      }
+    };
+    return function(action, newState) {
+      try {
+        if (valid[prevState][action] === newState) {
+          prevState = newState;
+          return true; 
+        }
+      } catch (err) {
+        console.error(err);
+      }
+      return false;
+    };
+  }();
+
+  stat.$('@display').html(V.dom([
+    { 'div[p:20px]': [ 
+      { 'h4@state': '...' },
+      { 'input.form-control(type="email" placeholder="Email")@email': '' },
+      { 'input.form-control(type="password" placeholder="Password")@password': '' },
+      { 'button.btn@signUpBtn': 'Sign Up' },
+      { 'button.btn@signInBtn': 'Sign In' },
+      { 'button.btn@signOutBtn': 'Sign Out' },
+      { 'button.btn@delBtn': 'Delete Account' }]
+    }
+  ], stat.id));
+
+  firebase.auth().onAuthStateChanged(user => {
+    console.log(user);
+  });
+
+  stat.$('@signUpBtn').click(evt => {
+    let email = stat.$('@email').val().trim();
+    let pwd = stat.$('@password').val().trim();
+    cope.send('/account/add', {
+      email: email,
+      pwd: pwd,
+      confirmedPwd: pwd
+    }).then(res => { 
+      stat.$('@state').html('...');
+      if (res.ok) {
+        if (state('signUp', 'existed')) {
+ 
+          // Sign up for Firebase
+          firebase.auth().createUserWithEmailAndPassword(email, pwd)
+            .catch(err => { console.error(err) });
+
+          stat.$('@state').html('Signed up as ' + email);
+          stat.ok();
+        } else {
+          stat.fail();
+        }
+      } else {
+        console.log(res);
+        stat.ok();
+      }
+    });
+  });
+
+  stat.$('@signInBtn').click(evt => {
+    let email = stat.$('@email').val().trim();
+    let pwd = stat.$('@password').val().trim();
+    cope.send('/account/signin', {
+      email: email,
+      pwd: pwd,
+      confirmedPwd: pwd
+    }).then(res => { 
+      stat.$('@state').html('...');
+      if (res.ok) {
+        if (state('signIn', 'signedIn')) {
+          stat.$('@state').html('Signed in as ' + email);
+          stat.ok();
+
+          // Sign in Firebase
+          firebase.auth().signInWithEmailAndPassword(email, pwd)
+            .catch(err => { console.error(err); });
+        } else {
+          stat.fail();
+        }
+      } else {
+        console.log(res);
+        stat.ok();
+      }
+    });
+  });
+
+  stat.$('@signOutBtn').click(evt => {
+    cope.send('/account/signout').then(res => {
+      stat.$('@state').html('...');
+      if (res.ok) {
+        if (state('signOut', 'existed')) {
+          stat.$('@state').html('Signed out.');
+          stat.ok();
+
+          // Sign out Firebase
+          firebase.auth().signOut()
+            .catch(err => { console.error(err); });
+        } else {
+          stat.fail();
+        }
+      } else {
+        console.log(res);
+        stat.ok();
+      }
+    });
+  });
+
+  stat.$('@delBtn').click(evt => {
+    let email = stat.$('@email').val().trim();
+    let pwd = stat.$('@password').val().trim();
+    cope.send('/account/del', {
+      email: email,
+      pwd: pwd,
+      confirmedPwd: pwd
+    }).then(res => {
+      stat.$('@state').html('...');
+      if (res.ok) {
+        if (state('del', 'none')) {
+          stat.$('@state').html('Account deleted.');
+          stat.ok();
+          // Delete user from Firebase
+          firebase.auth().currentUser.delete()
+            .then(() => { 
+              // User deleted from Firebase
+            })
+            .catch(err => { console.error(err); });
+        } else {
+          stat.fail();
+        }
+      } else {
+        console.log(res);
+        stat.ok();
+      }
+    });
+  });
+});
+
+test('Upload files to firebase, save record on Cope database', (next, stat) => {
   let store = firebase.storage();
-  console.log(store);
   let loader = cope.fileLoader(inputs => {
+    let uid;
+    try {
+      uid = firebase.auth().currentUser.uid;
+    } catch (err) {
+      uid = null;
+    }
+    if (!uid) {
+      stat.$('@display').prepend('Required to sign in first.');
+      return;
+    }
+    let path = 'files/' + uid + '/public/';;
     inputs.map(x => {
       if (!x.image) {
         return;
       }
       try {
         let file = x.image.blob || x.file;
-        let storeRef = store.ref().child('tests/' + file.filename);
+        let storeRef = store.ref().child(path + x.filename);
         let task = storeRef.put(file);
         task.then(snap => {
           snap.ref.getDownloadURL().then(url => {
             console.log(url);
             if (url) {
-              stat.ok();
+
+              // Save record on Cope
+              cope.send('/file/add', {
+                name: x.image.name,
+                type: x.file.type,
+                url: url
+              }).then(res => {
+                console.log(res);
+                cope.send('/file/get', {
+                  id: res.v.id
+                }).then(res => {
+                  console.log(res);
+                  stat.$('@display').html(V.dom([[ 'img(src="' + res.v.url + '" width="100%")' ]]))
+                  stat.ok();
+                })
+              })
             }
           }); 
         });
@@ -136,7 +305,7 @@ test('Upload to firebase', (next, stat) => {
         console.error(err);
       }
     });
-  });
+  }); // end of loader
 
   stat.$('@display').html(V.dom([
     { 'div': [
@@ -146,9 +315,18 @@ test('Upload to firebase', (next, stat) => {
   ], stat.id));
 
   stat.$('@uploadBtn').click(evt => {
-    loader.upload({ 'maxWidth': 100 });
+    loader.upload({ 'maxWidth': 400 });
   });
   next();
+});
+
+test('/file/all', (next, stat) => {
+  cope.send('/file/all').then(res => {
+    console.log(res);
+    if (!res.ok) {
+      stat.ok();
+    }
+  });
 });
 
 test('Array to Table', (next, stat) => {
