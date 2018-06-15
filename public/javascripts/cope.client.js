@@ -4,6 +4,32 @@ if (!jQuery) {
   return console.error('require jQuery');
 }
 
+if (!Array.prototype.hasOwnProperty('move')) {
+  Array.prototype.move = function(i, steps) {
+    if (i < arr.length 
+      && i >= 0
+      && (i + steps) < this.length
+      && (i + steps >= 0)) {
+      let a = this.slice(0, i);
+      let b = this.slice(i + 1);
+      if (steps > 0) {
+        return a
+          .concat(b.slice(0, steps))
+          .concat(this[i])
+          .concat(b.slice(steps))
+      } else {
+        return a.slice(0, a.length + steps)
+          .concat(this[i])
+          .concat(a.slice(a.length + steps))
+          .concat(b);
+      }
+      return [];
+    } else {
+      return this;
+    }
+  };
+}
+
 /*
 let thumbnailer = function(dataURL, file, options) {
   let self = {};
@@ -546,7 +572,7 @@ let newDS = function() {
   let data = {};
   let registry = {};
   let dsAPI = {};
-  dsAPI.onChange = function(name, fn) {
+  dsAPI.watch = function(name, fn) {
     if (typeof name != 'string' 
       || typeof fn != 'function') {
       return;
@@ -577,7 +603,6 @@ let newDS = function() {
       return data;
     }
   };
-
   return dsAPI;
 }; // end of newDS
 
@@ -621,6 +646,10 @@ cope.send = function(path, params, method) {
   });  
 }; // end of cope.send
 
+cope.dataStore = function() {
+  return newDS();
+};
+
 cope.views = function() {
   let V = {};
   let classes = {};
@@ -628,9 +657,9 @@ cope.views = function() {
   
   V.dom = domToHtml;
   
-  V.dataStore = function() {
-    return ds;
-  };
+  //V.dataStore = function() {
+  //  return ds;
+  //};
 
   V.createClass = function(className, fn) {
     if (typeof fn == 'function') {
@@ -652,26 +681,31 @@ cope.views = function() {
 }; // end of cope.views
 
 cope.queue = function() {
+  let idx = -1;
   let queueAPI = {};
   let funcs = [];
   let running = null;
   let next = function() {
-    if (funcs.length > 0) {
-      running = funcs[0];
-      funcs = funcs.slice(1);
+    console.log('Next');
+    running = null;
+    if (funcs[idx + 1]) {
       try {
+        idx += 1;
+        running = funcs[idx];
         running(next);
       } catch (err) {
         console.error(err);
       }
     }
+    return;
   };
   queueAPI.add = function(fn) {
+    console.log('ADD');
     if (typeof fn != 'function') {
       throw 'cope.queue().add(fn): fn should be function';
     }
     funcs = funcs.concat(fn);
-    if (!running || funcs.length == 1) {
+    if (!running) {
       next();
     }
     return queueAPI;

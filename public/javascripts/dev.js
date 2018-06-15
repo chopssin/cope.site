@@ -245,7 +245,8 @@ test('Signin / Signout Flow', (next, stat) => {
       }
     });
   });
-});
+  next();
+}); // end of test('Sign in / Sign out Flow')
 
 test('Upload files to firebase, save record on Cope database', (next, stat) => {
   let store = firebase.storage();
@@ -318,7 +319,7 @@ test('Upload files to firebase, save record on Cope database', (next, stat) => {
     loader.upload({ 'maxWidth': 400 });
   });
   next();
-});
+}); // end of test('Upload files to firebase, save record on Cope database'
 
 test('/file/all', (next, stat) => {
   cope.send('/file/all').then(res => {
@@ -327,6 +328,7 @@ test('/file/all', (next, stat) => {
       stat.ok();
     }
   });
+  next();
 });
 
 test('Array to Table', (next, stat) => {
@@ -435,7 +437,7 @@ test('Array to Table', (next, stat) => {
   stat.$('@display').html(V.dom(tableDOM));
   stat.ok();
   next();
-});
+}); // end of test('Array to Table')
 
 test('End with this test', (next, stat) => {
   stat.ok();

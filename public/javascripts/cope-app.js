@@ -9,7 +9,6 @@ try {
 }
 
 let V = cope.views();
-let DS = V.dataStore();
 
 V.createClass('CardsSection', vu => {
   vu.dom(data => [
@@ -77,8 +76,8 @@ V.createClass('Card', vu => {
     { '.card[mt:4px]': [
       { '.card-img-top[bgColor:#a37fb2;min-height:100px;overflow:hidden]@media': '' },
       { '.card-body': [
-        { 'h4@header': data.header || '' },
-        { 'p@text': data.text.replace(/\n/g, '<br>') || '' },
+        { 'h4@header': '' },
+        { 'p@text': '' },
         { 'table.table@kv-table[bgColor:#fafafa]': '' }]
       }]
     }
@@ -119,6 +118,17 @@ V.createClass('Card', vu => {
 
   vu.init(data => {
     vu.render(data);
+    let imgsrc;
+    try {
+      imgsrc = data.mediaArr[0].image.resizedURL;
+    } catch (err) {
+    }
+    
+    if (imgsrc) {
+      vu.$('@media').html(V.dom([['img(src="'+imgsrc+'" width="100%")']], vu.id));
+    }
+    vu.$('@header').html(data && data.header || '');
+    vu.$('@text').html(data && data.text ? data.text.replace(/\n/g, '<br>') : '');
   }); // end of Card.init
 }); // end of Card
 
@@ -152,11 +162,14 @@ V.createClass('CardEditorSection', vu => {
 
     vu.$('@saveBtn').on('click', evt => {
       try {
-        cope.send('/card/update', {
-          cardId: vu.get('cardId'),
-          updates: cardEditor.fetch()
-        }).then(res => {
-          console.log(res);
+        cardEditor.fetch().then(cardValue => {
+          console.log('cardValue', cardValue);
+          cope.send('/card/update', {
+            cardId: vu.get('cardId'),
+            updates: cardValue
+          }).then(res => {
+            console.log(res);
+          });
         });
       } catch (err) {
         console.error(err);
@@ -166,6 +179,17 @@ V.createClass('CardEditorSection', vu => {
 }); // end of CardEditorSection
 
 V.createClass('CardEditor', vu => {
+  let ds = cope.dataStore();
+  let loader = cope.fileLoader(inputs => {
+    inputs.map(x => {
+      if (x.image) {
+        let images = ds.get('images') || [];
+        ds.set('images', images.concat(x));
+        ds.set('newImage', x);
+      }
+    });
+  });
+
   vu.dom(data => [
     { '.row[relative; m:0 auto; max-width:640px]': [
       { '.col-sm-2.col-xs-12': [
@@ -227,94 +251,195 @@ V.createClass('CardEditor', vu => {
   }); // end of CardEditor.appendKV
 
   vu.method('fetch', () => {
-    let v = {};
-    v.isActive = vu.get('isActive');
-    v.tags = {};
-    v.mediaArr = vu.get('mediaArr') || []; // TBD
-    v.header = vu.$('@header').val().trim();
-    v.text = vu.$('@text').val().trim();
-    v.link = vu.$('@link').val().trim();
-    v.keyValues = [];
-    vu.$('@kv-table').children().each(function() {
-      let $kv = $(this);
-      //let key = $kv.data('key');
-      //let value = $kv.data('value');
-      let valid = false;
-      let inputValues = [];
-      let key, value;
-      try {
-        $kv.find('input').each(function() {
-          inputValues = inputValues.concat($(this).val().trim());
-        });
-        key = inputValues[0] || null;
-        value = inputValues[1] || null;
-        if (typeof key == 'string' && key.length > 0) {
-          v.tags[key] = true;
-          valid = true;
+    return new Promise((resolve, reject) => {
+      let v = {};
+      v.isActive = ds.get('isActive');
+      v.tags = {};
+      v.mediaArr = [];
+      v.header = vu.$('@header').val().trim();
+      v.text = vu.$('@text').val().trim();
+      v.link = vu.$('@link').val().trim();
+      v.keyValues = [];
+
+      // Fetch images
+      let queue = cope.queue();
+      let uploadCount = 0;
+      let images = ds.get('images') || [];
+      images.map((x, i) => {
+        v.mediaArr[i] = {
+          'image': {}
+        };
+
+        if (x.image) {
+          if (x.file) {
+            // Get user's firebase uid
+            let uid;
+            try {
+              uid = firebase.auth().currentUser.uid;
+            } catch (err) {
+              console.log(err);
+              return;
+            }
+
+            queue.add(next => {
+              // Upload the original file and get the download link
+              firebase.storage().ref('files/' + uid + '/private').child(x.filename).put(x.file)
+                .then(snap => {
+                  snap.ref.getDownloadURL().then(url => {
+                    v.mediaArr[i].image.originalURL = url;
+                    next();
+                  });
+                })
+                .catch(err => {
+                  console.error(err);
+                })
+            });
+
+            queue.add(next => {
+              // Upload the resized file and get the download link
+              firebase.storage().ref('files/' + uid + '/private').child(x.image.name).put(x.image.blob)
+                .then(snap => {
+                  snap.ref.getDownloadURL().then(url => {
+                    v.mediaArr[i].image.resizedURL = url;
+                    next();
+                  });
+                })
+                .catch(err => {
+                  console.error(err);
+                })
+            });
+          }
         }
-        if (typeof value == 'string' && value.length > 0) {
-          v.tags[value] = true;
-          valid = true;
-        } 
-      } catch (err) {
-        valid = false;
-      }
-      if (valid) {
-        v.keyValues = v.keyValues.concat({
-          'key': key,
-          'value': value
-        });
-      } 
-    }); // end of v.keyValues.map}
-    return v;
+      }); // end of images.map
+      queue.add(next => {
+        // Fetch the table
+        vu.$('@kv-table').children().each(function() {
+          let $kv = $(this);
+          let valid = false;
+          let inputValues = [];
+          let key, value;
+          try {
+            $kv.find('input').each(function() {
+              inputValues = inputValues.concat($(this).val().trim());
+            });
+            key = inputValues[0] || null;
+            value = inputValues[1] || null;
+            if (typeof key == 'string' && key.length > 0) {
+              v.tags[key] = true;
+              valid = true;
+            }
+            if (typeof value == 'string' && value.length > 0) {
+              v.tags[value] = true;
+              valid = true;
+            } 
+          } catch (err) {
+            valid = false;
+          }
+          if (valid) {
+            v.keyValues = v.keyValues.concat({
+              'key': key,
+              'value': value
+            });
+          } 
+        }); // end of v.keyValues.map}
+        console.log('Done!');
+        console.log(v);
+        resolve(v);
+      });
+    }); // end of Promise
   }); // end of CardEditor.fetch
 
-  vu.method('render', v => {
+  vu.init(data => {
+    ds.watch('isActive', v => {
+      vu.$('@media').hide();
+      vu.$('@header').hide();
+      vu.$('@text').hide();
+      vu.$('@kv-table').hide();
+      vu.$('@link-wrap').hide();
+      if (v.mediaArr) {
+        vu.$('@media').show();
+      }
+      if (v.header) {
+        vu.$('@header').show();
+      }
+      if (v.text) {
+        vu.$('@text').show();
+      }
+      if (v.keyValues) {
+        vu.$('@kv-table').show();
+      }
+      if (v.link) {
+        vu.$('@link-wrap').show();
+      }
+    });
+    ds.watch('newImage', v => {
+      if (v.image && v.image.img) {
+        // Render new image
+        v.image.img.style.width = '100%';
+        vu.$('@media').append(v.image.img);
+      } 
+    });
+    ds.watch('newKeyValue', v => {
+      vu.appendKV(v);
+    });
 
-    console.log('render', v);
-    vu.$('@media').hide();
-    vu.$('@header').hide();
-    vu.$('@text').hide();
-    vu.$('@kv-table').hide();
-    vu.$('@link-wrap').hide();
-    if (v.isActive.mediaArr) {
-      vu.$('@media').show();
-    }
-    if (v.isActive.header) {
-      vu.$('@header').show();
-    }
-    if (v.isActive.text) {
-      vu.$('@text').show();
-    }
-    if (v.isActive.keyValues) {
-      vu.$('@kv-table').show();
-    }
-    if (v.isActive.link) {
-      vu.$('@link-wrap').show();
-    }
+    ['header', 'text', 'mediaArr', 'keyValues', 'link'].map(x => {
+      vu.$('@' + x + 'Toggler').on('click', evt => {
+        try {
+          console.log(ds.get());
+          let isActive = ds.get('isActive');
+          isActive[x] = !isActive[x];
+          ds.set('isActive', isActive);
+        } catch (err) {
+          console.error(err);
+        }
+      });
+    });
 
-    if (typeof v != 'object') {
-      v = {};
-    }
-    if (!Array.isArray(v.keyValues)) {
+    vu.$('@media').on('click', evt => {
+      loader.upload({ maxWidth: 500, multi: true });
+    });
+
+    vu.$('@keyValuesToggler').on('click', evt => {
+      let kvTable = vu.$('@kv-table');
+      if (kvTable.children().length < 1) {
+        vu.appendKV();
+      }
+    });
+
+    // Initial values
+    let initV = data && data.value || {};
+    ds.set('isActive', initV.isActive 
+      || {
+      'mediaArr': false,
+      'header': true,
+      'text': true,
+      'keyValues': false,
+      'link': false
+    });
+    if (initV.mediaArr) {
       try {
-        v.keyValues = JSON.parse(v.keyValues || '[]');
+        initV.mediaArr.map(x => {
+          if (x.image && x.image.resizedURL) {
+            loader.download(x.image.resizedURL);
+          }
+        });
       } catch (err) {
-        console.error(err, v);
-        v.keyValues = [];
+        console.error(err);
       }
     }
-    // TBD: mediaArr
-    vu.$('@header').val(v.header || '');
-    vu.$('@text').val(v.text || '');
-    vu.$('@link').val(v.link || '');
-    vu.$('@kv-table').html('');
-    v.keyValues.map(kvValue => {
-      vu.appendKV(kvValue);
-    });
-  }); // end of CardEditor.render
+    vu.$('@header').val(initV.header || ''); 
+    vu.$('@text').val(initV.text || ''); 
+    vu.$('@link').val(initV.link || ''); 
+    if (Array.isArray(initV.keyValues)) {
+      initV.keyValues.map(keyValue => {
+        ds.set('newKeyValue', keyValue);
+      })
+    }
 
-  vu.init(data => {
+    return;
+
+    /*
     vu.set('isActive', (data 
       && data.value 
       && data.value.isActive) 
@@ -339,32 +464,7 @@ V.createClass('CardEditor', vu => {
     });
 
     vu.$('@media').on('click', evt => {
-      cope.modal
-        //.open()
-        //.title('Choose Photos / Videos')
-        .setUploader({ multi: true, maxWidth: 600 })
-        .getFiles(files => {
-          console.log(files);
-          files.map((x, i) => {
-            x.img.style.width = '100%';
-            x.img.draggable = true;
-            x.img.onclick = function() {
-              x.img.parentNode.removeChild(x.img);
-            };
-            vu.$('@media').append(x.img);
-            return;
-            // TBD
-            cope.send('/image/upload', {
-              file: x.blob
-            }).then(res => {
-              console.log(res);
-              let url = res.data.url;
-              // TBD: Deal with uploaded and uploading files 
-
-            });
-          });
-        })
-        .chooseFromLocal();
+      // TBD: upload files
     });
 
     vu.$('@keyValuesToggler').on('click', evt => {
@@ -384,6 +484,8 @@ V.createClass('CardEditor', vu => {
     } catch (err) {
       console.error(err);
     }
+    */
+
   }); // end of CardEditor.init
 }); // end of CardEditor
 

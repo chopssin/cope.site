@@ -1,7 +1,7 @@
 let copeHome = function() {
   
 let V = cope.views();
-let DS = V.dataStore();
+//let DS = V.dataStore();
 
 V.createClass('AppCard', vu => {
   vu.dom(data => [
@@ -35,6 +35,24 @@ V.createClass('SignInCard', vu => {
   ]);
 
   vu.init(data => {
+    vu.$('@signUpBtn').on('click', evt => {
+      evt.preventDefault();
+
+      let email = vu.$('@account').val().trim();
+      let pwd = vu.$('@pwd').val().trim();
+      firebase.auth().createUserWithEmailAndPassword(email, pwd)
+        .catch(err => {
+          console.error(err);
+        });
+      cope.send('/account/add', {
+        email: email,
+        pwd: pwd,
+        confirmedPwd: pwd
+      }).then(res => {
+        console.log(res, firebase.auth().currentUser);
+      }); 
+    });
+
     vu.$('@signInBtn').on('click', evt => {
       console.log('Sign In');
       let email = vu.$('@account').val().trim();
@@ -42,10 +60,7 @@ V.createClass('SignInCard', vu => {
       cope.send('/account/signin', {
         email: email,
         pwd: pwd
-      }).then(res => {
-        console.log(res);
-        //location.href = '/';
-      });
+      }); // it will open app list, once you're signed in
     }); 
   });
 });
@@ -55,7 +70,7 @@ let signInCheck = function() {
     cope.send('/account/me').then(res => {
       console.log(res);
       if (res && res.ok && res.data) {
-        DS.set('copeUserData', res.data);
+        //DS.set('copeUserData', res.data);
         resolve();
       } else {
         V.build('SignInCard', {
@@ -67,18 +82,31 @@ let signInCheck = function() {
   });
 }; // end of signInCheck
 
+let ds = cope.dataStore();
+ds.watch('newApp', appData => {
+  V.build('AppCard', {
+    'sel': '#page-content',
+    'method': 'append',
+    'data': appData
+  });
+});
+
 signInCheck().then(() => {
+
+  $('#page-content').html(V.dom([{ 'button.btn.btn-primary#addAppBtn': 'Add' }]));
+  $('#addAppBtn').click(evt => {
+    cope.send('/app/add').then(res => {
+      ds.set('newApp', res.data);
+    })
+  });
+
   // Load apps
   cope.send('/app/all').then(res => {
     console.log(res);
     try {
       let data = res.data;
       Object.keys(data).map(id => {
-        V.build('AppCard', {
-          'sel': '#page-content',
-          'method': 'append',
-          'data': data[id]
-        });
+        ds.set('newApp', data[id]);
       });
     } catch (err) {
       console.error(err); 
