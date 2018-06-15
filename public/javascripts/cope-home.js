@@ -93,7 +93,14 @@ ds.watch('newApp', appData => {
 
 signInCheck().then(() => {
 
-  $('#page-content').html(V.dom([{ 'button.btn.btn-primary#addAppBtn': 'Add' }]));
+  $('#page-content').html(V.dom([{ 'button.btn.btn-secondary#signOutBtn[float:right]': 'Sign Out' }]));
+  $('#signOutBtn').click(evt => {
+    cope.send('/account/signout').then(res => {
+      location.href = '/';
+    })
+  });
+
+  $('#page-content').append(V.dom([{ 'button.btn.btn-primary#addAppBtn': 'Add' }]));
   $('#addAppBtn').click(evt => {
     cope.send('/app/add').then(res => {
       ds.set('newApp', res.data);
