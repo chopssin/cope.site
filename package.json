@@ -6,7 +6,7 @@
     "lessc": "lessc ./less/main.less ./public/stylesheets/style.css",
     "www": "node ./bin/www",
     "all": "npm run lessc && npm run www",
-    "start": "NODE_ENV=dev npm run all",
+    "start": "DEBUG=cope.site:* NODE_ENV=dev npm run all",
     "test": "DEBUG=cope.site:* NODE_ENV=dev npm run all"
   },
   "dependencies": {
