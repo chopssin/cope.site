@@ -686,7 +686,6 @@ cope.queue = function() {
   let funcs = [];
   let running = null;
   let next = function() {
-    console.log('Next');
     running = null;
     if (funcs[idx + 1]) {
       try {
@@ -700,7 +699,6 @@ cope.queue = function() {
     return;
   };
   queueAPI.add = function(fn) {
-    console.log('ADD');
     if (typeof fn != 'function') {
       throw 'cope.queue().add(fn): fn should be function';
     }

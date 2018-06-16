@@ -10,6 +10,76 @@ try {
 
 let V = cope.views();
 
+let debug = function(thing) { 
+  V.createClass('Debug', vu => {
+    let hidden = true;
+    let ds = cope.dataStore();
+
+    vu.dom(data => [
+      { 'div[fixed; overflow:auto; p:60px 6px 6px; right:20px; top:20px; width:70%; max-width:300px; height:200px; bgColor:#233; color:#fff; z-index:100000]': [
+        { 'div[fixed; top:26px]': [ 
+          { 'button.btn@moreBtn': 'More' },
+          { 'button.btn@hideBtn': 'Hide' }]
+        },
+        { '@latest': '' },
+        { '@logs': '' }]
+      }
+    ]);
+
+    vu.method('print', thing => {
+      if (typeof thing == 'object') {
+        try {
+          thing = JSON.stringify(thing, null, 4).replace(/\n/g, '<br>').replace(/\s/g, '&nbsp;');
+        } catch (err) {
+          thing = '...';
+        }
+      }
+      if (typeof thing == 'string') {
+        vu.$('@logs').append('<br><br>' + thing);
+        vu.$('@latest').html(thing);
+      } 
+    });
+
+    vu.init(data => {
+      ds.watch('moreToggle', x => {
+        let more = !ds.get('more');
+        ds.set('more', more);
+        if (more) {
+          vu.$()
+            .css('max-width', '70%')
+            .css('height', '80vh');
+          vu.$('@logs').show();
+          vu.$('@latest').hide();
+          vu.$('@moreBtn').html('Less');
+        } else {
+          vu.$()
+            .css('max-width', '300px')
+            .css('height', '200px');
+          vu.$('@logs').hide();
+          vu.$('@latest').show();
+          vu.$('@moreBtn').html('More');
+        }
+      });
+      vu.$('@logs').hide();
+      vu.$('@hideBtn').click(evt => {
+        vu.$().hide();
+        setTimeout(function() {
+          vu.$().fadeIn();
+        }, 2000);
+      });
+      vu.$('@moreBtn').click(evt => {
+        ds.set('moreToggle');
+      });
+    }); // end of init
+  });
+
+  return V.build('Debug', {
+    sel: 'body',
+    method: 'prepend'
+  }).print;
+}();
+
+
 V.createClass('CardsSection', vu => {
   vu.dom(data => [
     { 'button.btn.btn-primary@createBtn': 'Create' },
@@ -20,7 +90,7 @@ V.createClass('CardsSection', vu => {
     vu.$('@cards').html('');
 
     cope.send('/card/all', { mine: true }).then(res => {
-      console.log(res);
+      //console.log(res);
       let arr = [];
       for (let nodeId in res.data) {
         let cardData = null;
@@ -163,7 +233,9 @@ V.createClass('CardEditorSection', vu => {
     vu.$('@saveBtn').on('click', evt => {
       try {
         cardEditor.fetch().then(cardValue => {
-          console.log('cardValue', cardValue);
+          //console.log('cardValue', cardValue);
+          debug('saved `cardValue`');
+          debug(cardValue);
           cope.send('/card/update', {
             cardId: vu.get('cardId'),
             updates: cardValue
@@ -263,7 +335,6 @@ V.createClass('CardEditor', vu => {
 
       // Fetch images
       let queue = cope.queue();
-      let uploadCount = 0;
       let images = ds.get('images') || [];
       images.map((x, i) => {
         v.mediaArr[i] = {
@@ -277,6 +348,8 @@ V.createClass('CardEditor', vu => {
             try {
               uid = firebase.auth().currentUser.uid;
             } catch (err) {
+              debug('Firebase Error');
+              debug(err);
               console.log(err);
               return;
             }
@@ -291,6 +364,8 @@ V.createClass('CardEditor', vu => {
                   });
                 })
                 .catch(err => {
+                  debug('Firebase Error');
+                  debug(err);
                   console.error(err);
                 })
             });
@@ -305,6 +380,8 @@ V.createClass('CardEditor', vu => {
                   });
                 })
                 .catch(err => {
+                  debug('Firebase Error');
+                  debug(err);
                   console.error(err);
                 })
             });

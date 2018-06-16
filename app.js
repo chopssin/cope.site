@@ -60,7 +60,7 @@ app.use(sess);
 app.use('/api', apiRoutes);
 app.use('/users', users);
 if (app.get('env') === 'dev') {
-  app.use('/dev', devRoutes);
+  app.use('/test', devRoutes);
 }
 app.use('/', routes);
 
