@@ -347,6 +347,8 @@ V.createClass('CardEditor', vu => {
             let uid;
             try {
               uid = firebase.auth().currentUser.uid;
+              debug('currentUser');
+              debug(firebase.auth().currentUser);
             } catch (err) {
               debug('Firebase Error');
               debug(err);
