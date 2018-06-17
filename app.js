@@ -59,9 +59,10 @@ app.use(sess);
 
 app.use('/api', apiRoutes);
 app.use('/users', users);
-if (app.get('env') === 'dev') {
-  app.use('/test', devRoutes);
-}
+//if (app.get('env') === 'dev') {
+//  app.use('/test', devRoutes);
+//}
+app.use('/test', devRoutes);
 app.use('/', routes);
 
 // catch 404 and forward to error handler
