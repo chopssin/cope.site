@@ -10,11 +10,12 @@ let hostname = cope.util.hostname;
 
 router.all('*', function(req, res, next) {
   let appHost = hostname(req);
-  if (req.session) {
+  if (req.hasOwnProperty('session')) {
     if (!req.session.appUserData) {
       req.session.appUserData = {};
     }
     if (appHost && !req.session.appUserData[appHost]) {
+      debug('Finding app node for ' + appHost);
       let appNode = M.model('cope/app').node({ 'appHost': appHost });
       appNode.fetchData().next(() => {
         if (appNode.nodeId()) {
@@ -153,6 +154,7 @@ setAPI('post', '/file/update', 'cope/file', 'update');
 
 // Define APIs which requires more flexible and custom design
 router.post('/account/me', function(req, res, next) {
+  debug('/account/me: req.session', req.session);
   if (req.session && req.session.copeUserData) {
     res.send({ ok: true, data: req.session.copeUserData });
   } else {
@@ -165,11 +167,11 @@ router.post('/account/signin', function(req, res, next) {
   let body = req.body || null;
   let obj = parse(body);
   M.model('cope/user').signIn(obj).then(data => {
-    if (typeof req.session == 'object' && data) {
+    if (req.session && data) {
       req.session.copeUserData = data;
       res.send({ ok: true, data: req.session.copeUserData });
     } else {
-      debug('[ERR] failed to access req.session');
+      debug('[ERR] /account/signin: req.session, data', req.session, data);
       res.send({ ok: false, data: data });
     }
   }).catch(err => {

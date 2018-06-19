@@ -96,35 +96,6 @@ test('cope.fileLoader: download files', (next, stat) => {
 }); // end of test('cope.fileLoader')
 
 test('Signin / Signout Flow', (next, stat) => {
-  let state = function(action, newState) {
-    let prevState = 'none';
-    let valid = {
-      'none': {
-        'signUp': 'existed'
-      },
-      'existed': {
-        'signIn': 'signedIn',
-        'del': 'none'
-      },
-      'signedIn': {
-        'signIn': 'signedIn',
-        'signOut': 'existed',
-        'del': 'none'
-      }
-    };
-    return function(action, newState) {
-      try {
-        if (valid[prevState][action] === newState) {
-          prevState = newState;
-          return true; 
-        }
-      } catch (err) {
-        console.error(err);
-      }
-      return false;
-    };
-  }();
-
   stat.$('@display').html(V.dom([
     { 'div[p:20px]': [ 
       { 'h4@state': '...' },
@@ -137,112 +108,78 @@ test('Signin / Signout Flow', (next, stat) => {
     }
   ], stat.id));
 
-  firebase.auth().onAuthStateChanged(user => {
-    console.log(user);
-  });
-
   stat.$('@signUpBtn').click(evt => {
+    stat.$('@state').html('...');
+    stat.fail();
+
     let email = stat.$('@email').val().trim();
     let pwd = stat.$('@password').val().trim();
-    cope.send('/account/add', {
-      email: email,
-      pwd: pwd,
-      confirmedPwd: pwd
-    }).then(res => { 
-      stat.$('@state').html('...');
-      if (res.ok) {
-        if (state('signUp', 'existed')) {
- 
-          // Sign up for Firebase
-          firebase.auth().createUserWithEmailAndPassword(email, pwd)
-            .catch(err => { console.error(err) });
 
-          stat.$('@state').html('Signed up as ' + email);
-          stat.ok();
-        } else {
-          stat.fail();
-        }
-      } else {
-        console.log(res);
+    cope.auth().signUp(email, pwd)
+      .then(() => {
+        stat.$('@state').html('Signed up as ' + email);
         stat.ok();
-      }
-    });
+      }).error(err => {
+        console.error(err);
+      });
   });
 
   stat.$('@signInBtn').click(evt => {
+    stat.$('@state').html('...');
+    stat.fail();
+
     let email = stat.$('@email').val().trim();
     let pwd = stat.$('@password').val().trim();
-    cope.send('/account/signin', {
-      email: email,
-      pwd: pwd,
-      confirmedPwd: pwd
-    }).then(res => { 
-      stat.$('@state').html('...');
-      if (res.ok) {
-        if (state('signIn', 'signedIn')) {
-          stat.$('@state').html('Signed in as ' + email);
-          stat.ok();
-
-          // Sign in Firebase
-          firebase.auth().signInWithEmailAndPassword(email, pwd)
-            .catch(err => { console.error(err); });
-        } else {
-          stat.fail();
-        }
-      } else {
-        console.log(res);
+    
+    cope.auth().signIn(email, pwd)
+      .then(() => {
+        stat.$('@state').html('Signed in as ' + email);
         stat.ok();
-      }
-    });
+      })
+      .error(err => {
+        console.error(err);
+      });
   });
 
   stat.$('@signOutBtn').click(evt => {
-    cope.send('/account/signout').then(res => {
-      stat.$('@state').html('...');
-      if (res.ok) {
-        if (state('signOut', 'existed')) {
-          stat.$('@state').html('Signed out.');
-          stat.ok();
+    stat.$('@state').html('...');
+    stat.fail();
 
-          // Sign out Firebase
-          firebase.auth().signOut()
-            .catch(err => { console.error(err); });
-        } else {
-          stat.fail();
-        }
-      } else {
-        console.log(res);
+    cope.auth().signOut()
+      .then(() => {
+        stat.$('@state').html('Signed out.');
         stat.ok();
-      }
-    });
+      })
+      .error(err => {
+        console.error(err);
+      });
   });
 
   stat.$('@delBtn').click(evt => {
+    stat.$('@state').html('...');
+    stat.fail();
+
     let email = stat.$('@email').val().trim();
     let pwd = stat.$('@password').val().trim();
-    cope.send('/account/del', {
-      email: email,
-      pwd: pwd,
-      confirmedPwd: pwd
-    }).then(res => {
+
+    cope.auth().delete().then(() => {
+      stat.$('@state').html('Deleted.');
+      stat.ok();
+    }).error(err => {
+      console.error(err);
+    });
+  });
+
+  firebase.auth().onAuthStateChanged(user => {
+    console.log(user)
+    cope.auth().fetch().then(() => {
+      let user = cope.auth().user();
       stat.$('@state').html('...');
-      if (res.ok) {
-        if (state('del', 'none')) {
-          stat.$('@state').html('Account deleted.');
-          stat.ok();
-          // Delete user from Firebase
-          firebase.auth().currentUser.delete()
-            .then(() => { 
-              // User deleted from Firebase
-            })
-            .catch(err => { console.error(err); });
-        } else {
-          stat.fail();
-        }
-      } else {
-        console.log(res);
-        stat.ok();
-      }
+      stat.ok();
+      console.log(user);
+      if (user) {
+        stat.$('@state').html('Signed in as ' + user.value.email);
+      } 
     });
   });
   next();
