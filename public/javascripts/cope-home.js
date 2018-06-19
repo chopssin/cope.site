@@ -33,8 +33,8 @@ V.createClass('SignInCard', vu => {
     { 'form': [
       { '.card.p-3': [
         { '.form-group': [
-          { 'input.form-control@account(type="email" placeholder="Email" value="chops@mail.com")': '' },
-          { 'input.form-control@pwd(type="password" placeholder="Password" value="1234")': '' },
+          { 'input.form-control@account(type="email" placeholder="Email")': '' },
+          { 'input.form-control@pwd(type="password" placeholder="Password")': '' },
           { 'button.btn.btn-primary@signUpBtn': 'Sign Up' }, 
           { 'button.btn.btn-success@signInBtn': 'Sign In' }] 
         }] 
