@@ -11,6 +11,8 @@ try {
 let V = cope.views();
 
 let debug = function(thing) { 
+  return function() {};
+
   V.createClass('Debug', vu => {
     let hidden = true;
     let ds = cope.dataStore();
@@ -912,13 +914,6 @@ let renderPage = function() {
       $('#li-' + path).addClass('active');
       break;
 
-    case 'cards':
-      $('#li-' + path).addClass('active');
-      V.build('CardsSection', {
-        sel: '#page-content'
-      });
-      break;
-
     case 'pages':
       $('#li-' + path).addClass('active');
       break;
@@ -936,7 +931,6 @@ let renderPage = function() {
       break;
 
     case 'posts':
-    default: 
       $('#li-posts').addClass('active');
       $('#page-content').html(V.dom([{ '#cards.card-columns': '' }]));
       cope.send('/post/all', { appId: appId }).then(res => {
@@ -952,6 +946,15 @@ let renderPage = function() {
           console.error(err);
         }
       });
+      break;
+
+    case 'cards':
+    default:
+      $('#li-' + path).addClass('active');
+      V.build('CardsSection', {
+        sel: '#page-content'
+      });
+
   } // end of switch
 }; // end of renderPage
 
