@@ -67,6 +67,51 @@ test('Start with function `test`', (next, stat) => {
   next();
 });
 
+test('cope.createClass: extensions', (next, stat) => {
+  let testV = cope.views();
+  testV.createClass('A', vu => {
+    vu.dom(data => [{ 'div[p:20px; bgColor:#aaa]': 'A' }]);
+    vu.method('sayHi', () => {
+      return 'Hi';
+    });
+    vu.method('myName', () => {
+      return 'A';
+    });
+  });
+
+  testV.createClass('B', 'A', vu => {
+    vu.dom(data => [{ 'div[p:20px; bgColor:#333; color:#fff]': 'B' }]);
+    vu.method('sayHello', () => {
+      return 'Hello';
+    });
+    vu.method('myName', () => {
+      return 'B';
+    });
+  });
+
+  testV.createClass('C', 'B', vu => {
+    vu.dom(data => [{ 'div[p:20px; bgColor:#aca]': 'C' }]);
+    vu.method('sayCheese', () => {
+      return 'Cheese';
+    });
+    vu.method('myName', () => {
+      return 'C';
+    });
+  });
+
+  let c = testV.build('C', {
+    sel: stat.sel('@display')
+  });
+
+  if (c.sayHi() 
+    && c.sayHello() 
+    && c.myName() === 'C') {
+    stat.ok();
+  }
+
+  next();
+});
+
 test('cope.fileLoader: download files', (next, stat) => {
   let files = [];
   let loader = cope.fileLoader(newFiles => {

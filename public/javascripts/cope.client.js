@@ -431,7 +431,7 @@ let domToHtml = function(val, vuId) {
   return readVal(val);
 }; // end of domToHtml
 
-let newVu = function(obj, render) {
+let newVu = function(obj, constructs) {
   let vuAPI = {};
   let init = null;
   let domBuilder = null;
@@ -466,7 +466,10 @@ let newVu = function(obj, render) {
   // To set the DOM builder function, 
   // or return the view's HTML and DOM
   vuAPI.dom = function(fn) {
-    if (typeof fn == 'function') {
+    if (fn && typeof fn != 'function') {
+      throw '#dom(fn): fn should be function';
+    }
+    if (!domBuilder && typeof fn == 'function') {
       domBuilder = fn;
     } else {
       return {
@@ -477,14 +480,15 @@ let newVu = function(obj, render) {
   }; // end of vuAPI.dom
 
   vuAPI.init = function(fn) {
-    if (typeof fn == 'function') {
+    if (!init && typeof fn == 'function') {
       init = fn;
     }
   }; // end of vuAPI.init
 
   vuAPI.method = function(name, fn) {
     if (vuAPI[name]) {
-      return console.error('vu.method(name): name "' + name + '" already taken');
+      // console.error('vu.method(name): name "' + name + '" already taken');
+      return;
     }
     if (!vuAPI[name] && typeof fn == 'function') {
       vuAPI[name] = fn;
@@ -528,9 +532,14 @@ let newVu = function(obj, render) {
   }; // end of vuAPI.val
 
   // Render this view
-  if (typeof render == 'function') {
-    render(vuAPI);
-  }
+  //if (typeof render == 'function') {
+  //  render(vuAPI);
+  //}
+
+  // Construct the view
+  constructs.map(construct => {
+    construct(vuAPI);
+  });
 
   // Build the view
   if (domBuilder) {
@@ -661,20 +670,41 @@ cope.views = function() {
   //  return ds;
   //};
 
-  V.createClass = function(className, fn) {
-    if (typeof fn == 'function') {
-      classes[className] = fn;
+  V.createClass = function() {
+    if (arguments.length < 2) {
+      throw '#createClass: arguments.length < 2';
+      return;
+    }
+    let className = arguments[0];
+    let myConstruct = arguments[arguments.length - 1];
+    let constructs = []
+    if (arguments.length > 2) {
+      for (let i = 1; i < arguments.length - 1; i++) {
+        try {
+          // constructs = classes[arguments[i]].constructs.concat(constructs);
+          constructs = constructs.concat(classes[arguments[i]]);
+        } catch (err) { 
+          // Do nothing ...
+        }
+      }
+    }
+    if (typeof myConstruct == 'function') {
+      //constructs = constructs.concat(myConstruct);
+      constructs = [myConstruct].concat(constructs);
+      classes[className] = constructs;
     }
     return;
-  };
+  }; // end of V.createClass
 
   V.build = function(className, obj) {
     if (!classes[className]) {
       return console.error('Failed to find class "' + className + '"');
     }
 
-    let classInitFunc = classes[className];
-    return newVu(obj, classInitFunc);
+    //let classInitFunc = classes[className];
+    //return newVu(obj, classInitFunc);
+    let constructs = classes[className];
+    return newVu(obj, constructs);
   }; // end of V.class
 
   return V;
