@@ -106,12 +106,11 @@ V.createClass('CardsSection', vu => {
         }
       }
       arr.map(cardData => {
-        V.build('Card', {
+        cope.ui.build('Cope.Card.Editable', {
           'sel': vu.sel('@cards'),
           'method': 'append',
-          'data': cardData.value
-        }).editable()
-          .onEdit(() => {
+          'data': cardData
+        }).edit(() => {
           V.build('CardEditorSection', {
             sel: '#page-content',
             data: {
@@ -119,9 +118,9 @@ V.createClass('CardsSection', vu => {
               cardData: cardData
             }
           });
-        });
-      });
-    });
+        }); // end of #edit
+      }); // end of `Cope.Card.Editable`
+    }); // end of arr.map
   }); // end of CardsSection
 
   vu.init(data => {

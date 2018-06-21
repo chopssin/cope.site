@@ -69,6 +69,7 @@ test('Start with function `test`', (next, stat) => {
 
 test('cope.createClass: extensions', (next, stat) => {
   let testV = cope.views();
+  let Binit = false;
   testV.createClass('A', vu => {
     vu.dom(data => [{ 'div[p:20px; bgColor:#aaa]': 'A' }]);
     vu.method('sayHi', () => {
@@ -87,6 +88,10 @@ test('cope.createClass: extensions', (next, stat) => {
     vu.method('myName', () => {
       return 'B';
     });
+    vu.init(data => {
+      vu.$().html('B initiated.');
+      Binit = true;
+    });
   });
 
   testV.createClass('C', 'B', vu => {
@@ -97,6 +102,12 @@ test('cope.createClass: extensions', (next, stat) => {
     vu.method('myName', () => {
       return 'C';
     });
+    vu.init(data => {
+      vu.$().html(V.dom([
+        { 'p': 'C initiated.' },
+        { 'p': 'B extends A; C extends B; Build C.' }
+      ]));
+    });
   });
 
   let c = testV.build('C', {
@@ -105,7 +116,8 @@ test('cope.createClass: extensions', (next, stat) => {
 
   if (c.sayHi() 
     && c.sayHello() 
-    && c.myName() === 'C') {
+    && c.myName() === 'C'
+    && !Binit) {
     stat.ok();
   }
 
@@ -221,7 +233,6 @@ test('Signin / Signout Flow', (next, stat) => {
       let user = cope.auth().user();
       stat.$('@state').html('...');
       stat.ok();
-      console.log(user);
       if (user) {
         stat.$('@state').html('Signed in as ' + user.value.email);
       } 
@@ -305,10 +316,14 @@ test('Upload files to firebase, save record on Cope database', (next, stat) => {
 
 test('/file/all', (next, stat) => {
   cope.send('/file/all').then(res => {
-    console.log(res);
-    if (!res.ok) {
-      stat.ok();
-    }
+    cope.auth().fetch().then(() => {
+      let user = cope.auth().user();
+      if ((user && res.ok) || (!user && !res.ok)) {
+        stat.ok();
+      } else {
+        console.log('/file/all', user, res);
+      }
+    });
   });
   next();
 });
@@ -420,6 +435,28 @@ test('Array to Table', (next, stat) => {
   stat.ok();
   next();
 }); // end of test('Array to Table')
+
+test('Cope.Card', (next, stat) => {
+  stat.$('@display').html(V.dom([{ '.card-columns@cards[bgColor:#335; p:8px]': '' }], stat.id));
+  let cardData = {
+    value: {
+      header: 'Header',
+      text: 'Text',
+      mediaArr: [{ image: { resizedURL: 'https://source.unsplash.com/random' } }]
+    }
+  };
+  cope.ui.build('Cope.Card', {
+    sel: stat.sel('@cards'),
+    data: cardData
+  });
+  cope.ui.build('Cope.Card.Editable', {
+    sel: stat.sel('@cards'),
+    method: 'append',
+    data: cardData
+  }).edit(() => {
+    console.log('Modal!');
+  });
+}); // end of test('Cope.Card')
 
 test('End with this test', (next, stat) => {
   stat.ok();

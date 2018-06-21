@@ -490,6 +490,9 @@ let newVu = function(obj, constructs) {
       // console.error('vu.method(name): name "' + name + '" already taken');
       return;
     }
+    if (typeof fn != 'function') {
+      throw '#method(name, fn): fn should be function'
+    }
     if (!vuAPI[name] && typeof fn == 'function') {
       vuAPI[name] = fn;
     }
