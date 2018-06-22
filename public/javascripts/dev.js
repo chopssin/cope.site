@@ -436,7 +436,7 @@ test('Array to Table', (next, stat) => {
   next();
 }); // end of test('Array to Table')
 
-test('Cope.Card', (next, stat) => {
+test('Cope.Card and Cope.Card.Editable', (next, stat) => {
   stat.$('@display').html(V.dom([{ '.card-columns@cards[bgColor:#335; p:8px]': '' }], stat.id));
   let cardData = {
     value: {
@@ -449,14 +449,42 @@ test('Cope.Card', (next, stat) => {
     sel: stat.sel('@cards'),
     data: cardData
   });
-  cope.ui.build('Cope.Card.Editable', {
+
+  let editableCard = cope.ui.build('Cope.Card.Editable', {
     sel: stat.sel('@cards'),
     method: 'append',
     data: cardData
-  }).edit(() => {
-    console.log('Modal!');
   });
+    
+  editableCard.edit(() => {
+    stat.ok();
+  });
+
+  editableCard.edit();
+  next();
 }); // end of test('Cope.Card')
+
+test('Cope.Card.Editor', (next, stat) => {
+  let editor = cope.ui.build('Cope.Card.Editor', {
+    sel: stat.sel('@display')
+  });
+
+  stat.$('@display').append(V.dom([
+    { 'button.btn.btn-primary[block; relative; m:0 auto]@saveBtn': 'Save' },
+    { '@card': '' }
+  ], stat.id));
+
+  stat.$('@saveBtn').click(evt => {
+    console.log(editor.fetch());
+    cope.ui.build('Cope.Card', {
+      sel: stat.sel('@card'),
+      data: {
+        value: editor.fetch()
+      }
+    });
+  });
+  next();
+});
 
 test('End with this test', (next, stat) => {
   stat.ok();
