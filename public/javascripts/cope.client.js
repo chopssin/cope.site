@@ -662,6 +662,31 @@ cope.dataStore = function() {
   return newDS();
 };
 
+cope.class = function(constructor) {
+  if (typeof constructor != 'function') {
+    return console.error('cope.class(constructor): constructor should be function');
+  } 
+  let classAPI = {};
+  classAPI.constructors = [constructor]; // set the initial constructor
+  classAPI.extends = function(parentClass) {
+    if (!parentClass
+      || !parentClass.constructors
+      || !parentClass.build) {
+      console.error('#extends(parentClass): parentClass should be classAPI');
+      return;
+    }
+    classAPI.constructors = classAPI.constructors
+      .concat(parentClass.constructors);
+    return classAPI;
+  };
+  classAPI.build = function(obj) {
+    return newVu(obj, classAPI.constructors); 
+  };
+  return classAPI;
+}; // end of cope.class
+
+cope.dom = domToHtml;
+
 cope.views = function() {
   let V = {};
   let classes = {};

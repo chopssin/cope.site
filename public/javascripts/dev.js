@@ -1,7 +1,8 @@
 let runTests = function() {
 
-let V = cope.views();
-V.createClass('Stat', vu => {
+//let V = cope.views();
+//V.createClass('Stat', vu => {
+let Stat = cope.class(vu => {
   let isFolded = false;
 
   vu.dom(data => [
@@ -47,12 +48,13 @@ V.createClass('Stat', vu => {
       }
     });
   });
-});
+}); // end of Stat
 
 let tests = cope.queue();
 let test = function(msg, testFn) {
   tests.add(next => {
-    let statVu = V.build('Stat', {
+    //let statVu = V.build('Stat', {
+    let statVu = Stat.build({
       sel: '#wrap',
       method: 'append'
     });
@@ -67,10 +69,9 @@ test('Start with function `test`', (next, stat) => {
   next();
 });
 
-test('cope.createClass: extensions', (next, stat) => {
-  let testV = cope.views();
+test('cope.class and extensions', (next, stat) => {
   let Binit = false;
-  testV.createClass('A', vu => {
+  let A = cope.class(vu => {
     vu.dom(data => [{ 'div[p:20px; bgColor:#aaa]': 'A' }]);
     vu.method('sayHi', () => {
       return 'Hi';
@@ -80,7 +81,7 @@ test('cope.createClass: extensions', (next, stat) => {
     });
   });
 
-  testV.createClass('B', 'A', vu => {
+  let B = cope.class(vu => {
     vu.dom(data => [{ 'div[p:20px; bgColor:#333; color:#fff]': 'B' }]);
     vu.method('sayHello', () => {
       return 'Hello';
@@ -92,9 +93,9 @@ test('cope.createClass: extensions', (next, stat) => {
       vu.$().html('B initiated.');
       Binit = true;
     });
-  });
+  }).extends(A);
 
-  testV.createClass('C', 'B', vu => {
+  let C = cope.class(vu => {
     vu.dom(data => [{ 'div[p:20px; bgColor:#aca]': 'C' }]);
     vu.method('sayCheese', () => {
       return 'Cheese';
@@ -103,26 +104,47 @@ test('cope.createClass: extensions', (next, stat) => {
       return 'C';
     });
     vu.init(data => {
-      vu.$().html(V.dom([
+      vu.$().html(cope.dom([
         { 'p': 'C initiated.' },
-        { 'p': 'B extends A; C extends B; Build C.' }
+        { 'p': 'B <- A; C <- B; Build C.' },
+        { 'p': 'P <- Q; P <- C; Build P.' }
       ]));
+    });
+  }).extends(B);
+
+  let Q = cope.class(vu => {
+    vu.method('mQ', () => { 
+      return 'Q';
     });
   });
 
-  let c = testV.build('C', {
+  let P = cope.class(vu => {
+    vu.dom(data => [{ 'div[p:20px; bgColor:#aca]': 'P' }]);
+    vu.method('mP', () => {
+      return P;
+    });
+  }).extends(Q).extends(C);
+
+  let c = C.build({
     sel: stat.sel('@display')
   });
 
-  if (c.sayHi() 
-    && c.sayHello() 
-    && c.myName() === 'C'
-    && !Binit) {
-    stat.ok();
-  }
+  let p = P.build({
+    sel: stat.sel('@display')
+  });
 
+  if (p.sayHi() 
+    && p.sayHello() 
+    && p.myName() === 'C'
+    && !Binit
+    && p.mP
+    && p.mQ) {
+    stat.ok();
+  } else {
+    console.error(p);
+  }
   next();
-});
+}); // cope.class and extensions
 
 test('cope.fileLoader: download files', (next, stat) => {
   let files = [];
@@ -138,7 +160,7 @@ test('cope.fileLoader: download files', (next, stat) => {
     }
   });
 
-  stat.$('@display').append(V.dom([
+  stat.$('@display').append(cope.dom([
     [ 'div', [
       { 'div@images[w:100%; max-width:600px]': '' }]
     ]
@@ -153,7 +175,7 @@ test('cope.fileLoader: download files', (next, stat) => {
 }); // end of test('cope.fileLoader')
 
 test('Signin / Signout Flow', (next, stat) => {
-  stat.$('@display').html(V.dom([
+  stat.$('@display').html(cope.dom([
     { 'div[p:20px]': [ 
       { 'h4@state': '...' },
       { 'input.form-control(type="email" placeholder="Email")@email': '' },
@@ -279,7 +301,7 @@ test('Upload files to firebase, save record on Cope database', (next, stat) => {
                   id: res.v.id
                 }).then(res => {
                   console.log(res);
-                  stat.$('@display').html(V.dom([[ 'img(src="' + res.v.url + '" width="100%")' ]]))
+                  stat.$('@display').html(cope.dom([[ 'img(src="' + res.v.url + '" width="100%")' ]]))
                   stat.ok();
                 })
               })
@@ -301,7 +323,7 @@ test('Upload files to firebase, save record on Cope database', (next, stat) => {
     });
   }); // end of loader
 
-  stat.$('@display').html(V.dom([
+  stat.$('@display').html(cope.dom([
     { 'div': [
       { 'button@uploadBtn': 'Upload one file' },
       { 'div@images[w:100%; max-width:600px]': '' }]
@@ -431,13 +453,13 @@ test('Array to Table', (next, stat) => {
     }
   ];
 
-  stat.$('@display').html(V.dom(tableDOM));
+  stat.$('@display').html(cope.dom(tableDOM));
   stat.ok();
   next();
 }); // end of test('Array to Table')
 
 test('Cope.Card and Cope.Card.Editable', (next, stat) => {
-  stat.$('@display').html(V.dom([{ '.card-columns@cards[bgColor:#335; p:8px]': '' }], stat.id));
+  stat.$('@display').html(cope.dom([{ '.card-columns@cards[bgColor:#335; p:8px]': '' }], stat.id));
   let cardData = {
     value: {
       header: 'Header',
@@ -445,6 +467,7 @@ test('Cope.Card and Cope.Card.Editable', (next, stat) => {
       mediaArr: [{ image: { resizedURL: 'https://source.unsplash.com/random' } }]
     }
   };
+
   cope.ui.build('Cope.Card', {
     sel: stat.sel('@cards'),
     data: cardData
@@ -469,20 +492,67 @@ test('Cope.Card.Editor', (next, stat) => {
     sel: stat.sel('@display')
   });
 
-  stat.$('@display').append(V.dom([
+  // Fill in initial data
+  // TBD: editor.  
+  editor.load({
+    header: '這是標題'
+  });
+
+  editor.load({
+    text: '內文。'
+  });
+
+  editor.load({
+    keyValues: [{
+      key: '工種',
+      value: 'FW'
+    }, {
+      key: '工數',
+      value: 5
+    }]
+  });
+
+  let data = editor.fetch();
+  let isActive = data.isActive;
+  if (isActive) {
+    try {
+      isActive = Object.assign(isActive, { 'keyValues': true });
+      editor.load({
+        isActive: isActive
+      })
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  stat.$('@display').append(cope.dom([
     { 'button.btn.btn-primary[block; relative; m:0 auto]@saveBtn': 'Save' },
     { '@card': '' }
   ], stat.id));
 
+  let firstTest = false;
   stat.$('@saveBtn').click(evt => {
     console.log(editor.fetch());
-    cope.ui.build('Cope.Card', {
+    let card = cope.ui.build('Cope.Card', {
       sel: stat.sel('@card'),
       data: {
         value: editor.fetch()
       }
     });
-  });
+
+    let data = card.get();
+    try {
+      if (!firstTest && data && data.value
+        && data.value.keyValues.length == 2
+        && data.value.isActive.keyValues) {
+        firstTest = true;
+        stat.ok();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }).click();
+
   next();
 });
 
