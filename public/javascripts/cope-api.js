@@ -786,3 +786,25 @@ cope.prop('ui', function() {
 
   return uiAPI;
 }()); // end of cope.prop('ui', uiContruct())
+
+cope.prop('render', function() {
+  let pages = {};
+  return function(path, arg) {
+    if (typeof path != 'string') {
+      throw 'cope.render(path, arg): path should be string';
+    }
+    if (typeof arg == 'function') {
+      if (pages[path]) {
+        throw 'cope.render(path, fn): "' + path + '" is in use.';
+      } else {
+        pages[path] = arg;
+      }
+    } else {
+      try {
+        return pages[path].call(null, arg);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+}()); // end of cope.prop('render', renderConstruct())

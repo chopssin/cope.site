@@ -1,0 +1,6 @@
+extends cope-app
+
+block javascripts
+  script( src = "/javascripts/cope-app-dashboard.js" )
+  script.
+    cope.render('/', { appId: '#{appId}' });

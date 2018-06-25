@@ -30,11 +30,11 @@ router.get('/:appId', function(req, res, next) {
   let appHost = hostname(req);
   let appId = req.params.appId;
   if (appHost) {
-    debug('Requesting page on ' + appHost);
-    res.render('appIndex');
+    //debug('Requesting page on ' + appHost);
+    //res.render('appIndex');
   } else {
     debug('Requesting Cope');
-    res.render('cope-app', { 
+    res.render('cope-app-dashboard', { 
       title: 'Cope', 
       appId: appId,
       path: null,
@@ -70,10 +70,10 @@ router.get('/:appId/:section', function(req, res, next) {
     res.render('appIndex');
   } else {
     debug('Requesting Cope');
-    res.render('cope-app', { 
+    res.render('cope-app-' + section, { 
       title: 'Cope', 
       appId: appId,
-      path: section,
+      path: null,
       params: null
     });
   }

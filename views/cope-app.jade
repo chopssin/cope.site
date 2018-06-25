@@ -5,6 +5,10 @@ block sidebar
     a#app-name.simple-text.logo-normal
   .sidebar-wrapper
     ul.nav
+      li#li-dashboard.nav-item
+        a.nav-link(href = "/#{appId}")
+          i.material-icons dashboard
+          p Dashboard
       li#li-cards.nav-item
         a.nav-link(href = "/#{appId}/cards")
           i.material-icons dashboard
@@ -53,4 +57,5 @@ block navbarToggler
 block javascripts
   script( src="/javascripts/cope-app.js" )
   script.
-    copeApp("#{appId}", "#{path}", "#{params}");
+    //cope.render('/app', { appId: '#{appId}' });
+    //copeApp("#{appId}", "#{path}", "#{params}");
