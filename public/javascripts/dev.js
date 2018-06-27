@@ -256,7 +256,8 @@ test('Signin / Signout Flow', (next, stat) => {
       stat.$('@state').html('...');
       stat.ok();
       if (user) {
-        stat.$('@state').html('Signed in as ' + user.value.email);
+        //stat.$('@state').html('Signed in as ' + user.value.email);
+        stat.$('@state').html('Signed in as ' + user.value('email'));
       } 
     });
   });
@@ -336,15 +337,52 @@ test('Upload files to firebase, save record on Cope database', (next, stat) => {
   next();
 }); // end of test('Upload files to firebase, save record on Cope database'
 
+test('cope.uploadFiles(files).then(urls => { ... })', (next, stat) => {
+  let Image = cope.class(vu => {
+    vu.dom(data => [
+      { 'div[w:100%]': [
+        [ 'img(src="' + data.url + '" width="100px")' ]]
+      }
+    ]);
+  });
+  let loader = cope.fileLoader(inputs => {
+    files = inputs.map(x => x.file);
+    cope.uploadFiles(files).then(urls => {
+      urls.map(url => {
+        stat.$('@images').append()
+        Image.build({ 
+          sel: stat.sel('@images'),
+          method: 'append',
+          data: { 
+            url: url
+          }
+        })
+        stat.ok();
+      });
+    })
+  });
+  stat.$('@display').html(cope.dom([
+    { 'div': [
+      { 'button@uploadBtn': 'Upload one file' },
+      { 'div@images[w:100%; max-width:600px]': '' }]
+    }
+  ], stat.id));
+
+  stat.$('@uploadBtn').click(evt => {
+    loader.upload({ 'maxWidth': 400, multi: true });
+  });
+  next();
+}); // end of test('cope.uploadFiles(files).then(urls => { ... })')
+
 test('/file/all', (next, stat) => {
   cope.send('/file/all').then(res => {
-    cope.auth().fetch().then(() => {
-      let user = cope.auth().user();
-      if ((user && res.ok) || (!user && !res.ok)) {
+    let auth = cope.auth();
+    auth.fetch().then(() => {
+      let user = auth.user();
+      if ((user.data() && res.ok) || (!user && !res.ok)) {
         stat.ok();
-      } else {
-        console.log('/file/all', user, res);
       }
+      console.log('/file/all', user, res);
     });
   });
   next();

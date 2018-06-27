@@ -14,8 +14,29 @@ cope.prop('auth', function() {
     };
 
     api.user = function() {
-      return userData;
-    };
+      let userAPI = {};
+      if (userData 
+        && typeof userData == 'object'
+        && typeof userData.value == 'object') {
+        userAPI.data = function() {
+          return userData;
+        };
+
+        userAPI.value = function(key) {
+          return userData.value[key];
+        };
+
+        userAPI.firebaseUID = function() {
+          try {
+            return firebase.auth().currentUser.uid;
+          } catch (err) {
+            console.error(err);
+          }
+        };
+        return userAPI;
+      } // end of if
+      return null;
+    }; // end of api.user
 
     api.signUp = function(email, pwd) {
       let fu = firebase.auth().currentUser;
@@ -55,7 +76,7 @@ cope.prop('auth', function() {
         });
       });
       return api;
-    };
+    }; // end of api.signUp
 
     api.signIn = function(email, pwd) {
       let fu = firebase.auth().currentUser;
@@ -96,7 +117,7 @@ cope.prop('auth', function() {
         });
       });
       return api;
-    };
+    }; // end of api.signIn
 
     api.signOut = function() {
       queue.add(next => {
@@ -120,7 +141,7 @@ cope.prop('auth', function() {
         }
       })
       return api;
-    };
+    }; // end of api.signOut
 
     api.fetch = function() {
       queue.add(next => {
@@ -135,7 +156,7 @@ cope.prop('auth', function() {
         }
       });
       return api;
-    };
+    }; // end of api.fetch
 
     api.delete = function(email, pwd) {
       api.signIn(email, pwd);
@@ -166,7 +187,7 @@ cope.prop('auth', function() {
         }
       });
       return api;
-    };
+    }; // end of api.delete
 
     api.then = function(fn) {
       queue.add(next => {
@@ -200,7 +221,7 @@ cope.prop('auth', function() {
     }
 
     return api;
-  }; // end of auth
+  }; // end of the returned function
 }()); // end of cope.prop('auth', authContruct())
 
 cope.prop('ui', function() {
@@ -364,16 +385,36 @@ cope.prop('ui', function() {
         return ds;
       }
     }()); // end of UI.Card.ds
+
+    vu.method('load', value => {
+      if (!value || typeof value != 'object') {
+        return;
+      }
+      try {
+        Object.keys(value).map(k => {
+          vu.ds().set(k, value[k]);
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }); // end of UI.Card.load
+
+    vu.method('fetch', () => {
+      return vu.ds().get();
+    });
   })); // end of UI.Card
 
   uiAPI.create('Cope.Card', cope.class(vu => {
+    vu.method('cardId', () => {
+      try {
+        return vu.fetch().id || null
+      } catch (err) {
+        console.error(err);
+      }
+    });
     vu.init(data => {
       try {
-        vu.ds().set('header', data.value.header);
-        vu.ds().set('text', data.value.text);
-        vu.ds().set('mediaArr', data.value.mediaArr);
-        vu.ds().set('keyValues', data.value.keyValues);
-        //vu.render(data);
+        vu.load(data.value);
       } catch (err) {
         console.error(err, vu);
       }
@@ -386,7 +427,7 @@ cope.prop('ui', function() {
       return function(fn) {
         if (typeof fn == 'function' && !onEdit) {
           vu.$('.card').prepend(cope.dom([
-            { 'button.btn.btn-primary@editBtn[absolute;max-width:104px;top:8px;right:8px;will-change:auto]': 'Edit' }
+            { 'button.btn.btn-primary@editBtn[absolute;max-width:104px;top:8px;right:8px;will-change:auto;z-index:1]': 'Edit' }
           ], vu.id));
 
           vu.$('@editBtn').on('click', evt => {
@@ -808,3 +849,69 @@ cope.prop('render', function() {
     }
   };
 }()); // end of cope.prop('render', renderConstruct())
+
+cope.prop('uploadFiles', (a, options) => { // a should be an array of files
+  let files = a;
+  let counter = 0;
+  let urls = [];
+  if (a && !Array.isArray(a) && typeof a == 'object' && a.file) {
+    files = [a];
+  }
+  if (!Array.isArray(a)) {
+    throw 'cope.uploadFiles(a, options): a should be array or object containing `file`'
+    return;
+  }
+
+  urls = files.map(x => null);
+
+  return new Promise((resolve, reject) => {
+    files.map((file, idx) => {
+      if (!file) {
+        return;
+      }
+      let queue = cope.queue()
+      let filename = cope.randId(16);
+      let downloadURL = null;
+      console.log(filename, file);
+      queue.add(next => {
+        // Firebase upload
+        let auth = cope.auth();
+        auth.fetch().then(() => {
+          let path = 'files';
+          if (auth.user()) {
+            path = 'files/' + auth.user().firebaseUID();
+            if (options && options.public) {
+              path = path + '/public';
+            } else {
+              path = path + '/private';
+            }
+          } else if (options && options.anonymously) {
+            path =  'files/anonymously';
+          }
+          console.log(path);
+          firebase.storage().ref(path).child(filename).put(file)
+            .then(snap => {
+              snap.ref.getDownloadURL().then(url => {
+                downloadURL = url;
+                next(); 
+              });
+            });
+        });
+      });
+      queue.add(next => {
+        // Cope upload
+        cope.send('/file/add', {
+          name: filename,
+          type: file.type || 'unknown',
+          url: downloadURL
+        }).then(res => {
+          urls[idx] = downloadURL;
+          counter += 1;
+          if (counter == files.length) {
+            resolve(urls);     
+          }
+        });
+      });
+    }); // end of a.map
+  }); // end of Promise
+}); // end of cope.prop('uploadFiles', func)
