@@ -684,7 +684,43 @@ module.exports = function() {
     });
   }); // end of "cope/card"
 
-  M.createModel('cope/file');
+  M.createModel('cope/file', model => {
+    model.setBefore('getMany', (obj, userData, params) => {
+      return new Promise((resolve, reject) => {
+        let valid = {};
+        let copeUserNodeId = userData 
+          && userData.copeUserData 
+          && userData.copeUserData.nodeId 
+          || null;
+        if (obj && obj.mine && copeUserNodeId) {
+          valid.subsetArr = [{ 'linkName': 'fileCreator', 'target': copeUserNodeId }];
+        }
+        debug('getMany', obj, userData, params, copeUserNodeId);
+        resolve(valid);
+      });
+    });
+
+    model.setAfter('add', (obj, userData, params) => {
+      return new Promise((resolve, reject) => {
+        let cardNodeId = obj.nodeId;
+        let copeUserNodeId = userData 
+          && userData.copeUserData 
+          && userData.copeUserData.nodeId 
+          || null;
+
+        if (cardNodeId && copeUserNodeId) {
+          G.node(cardNodeId)
+            .link('fileCreator', copeUserNodeId).next(() => {
+            delete obj._id;
+            delete obj.nodeId;
+            resolve(obj);
+          });
+        } else {
+          // TBD
+        }
+      });
+    });
+  }); // end of "cope/file"
 
   return false;
 }();

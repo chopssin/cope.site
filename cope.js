@@ -638,32 +638,38 @@ module.exports = function() {
     }; // end of graphAPI.node
 
     graphAPI.findNodes = function(q) {
-      let query = null;
-      if (Array.isArray(q)) { // array of nodeIds
-        query = {
-          '$or': q.map(nid => {
-            return {
-              'nodeId': nid
-            };
-          })
-        };
-      } else if (typeof q == 'object') { // normal query
-        query = {
-          '$and': function(q) {
-            let arr = [];
-            for (let key in q) {
-              let trueKey = validateKey(key);
-              let tmp = {};
-              tmp[trueKey] = q[key];
-              arr = arr.concat(tmp);
-            }
-            return arr;
-          }(q)
-        };
-      }
       return new Promise((resolve, reject) => {
+        let query = null;
+        if (Array.isArray(q)) { // array of nodeIds
+
+          if (q.length < 1) { // empty array of nodeIds
+            resolve([]);
+            return;
+          }
+          
+          query = {
+            '$or': q.map(nid => {
+              return {
+                'nodeId': nid
+              };
+            })
+          };
+        } else if (typeof q == 'object') { // normal query
+          query = {
+            '$and': function(q) {
+              let arr = [];
+              for (let key in q) {
+                let trueKey = validateKey(key);
+                let tmp = {};
+                tmp[trueKey] = q[key];
+                arr = arr.concat(tmp);
+              }
+              return arr;
+            }(q)
+          };
+        }
         if (!query) {
-          reject(debug('[ERR] graphAPI.findNodes(query): Invalid query.'));
+          reject(debug('[ERR] graphAPI.findNodes(query): Invalid query.', q));
           return;
         } 
         db.useMongo(mg => {
@@ -675,7 +681,7 @@ module.exports = function() {
               });
               resolve(nodeDataObj); 
             } else {
-              reject(debug('[ERR] graphAPI.findNodes(query)', err));
+              reject(debug('[ERR] graphAPI.findNodes(query)', err, query));
               return;
             }
             mg.close();

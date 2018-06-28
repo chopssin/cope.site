@@ -396,12 +396,23 @@ test('cope.uploadFiles(files).then(urls => { ... })', (next, stat) => {
 }); // end of test('cope.uploadFiles(files).then(urls => { ... })')
 
 test('/file/all', (next, stat) => {
-  cope.send('/file/all').then(res => {
+  cope.send('/file/all', { mine: true }).then(res => {
+    console.log(res);
     let auth = cope.auth();
     auth.fetch().then(() => {
       let user = auth.user();
-      if ((user.data() && res.ok) || (!user && !res.ok)) {
+      if ((user && res.ok) || (!user && !res.ok)) {
         stat.ok();
+      }
+      if (res.data) {
+        try {
+          Object.keys(res.data).map(nodeId => {
+            let url = res.data[nodeId].value.url;
+            stat.$('@display').append('<a href="' + url + '" target="_blank">' + nodeId + '</a><br>');
+          });
+        } catch (err) {
+        
+        }
       }
       console.log('/file/all', user, res);
     });

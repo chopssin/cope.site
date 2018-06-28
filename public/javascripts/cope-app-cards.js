@@ -131,7 +131,7 @@ cope.render('/app/cards', obj => {
               }
             });
 
-            cope.uploadFiles(files).then(urls => {
+            cope.uploadFiles(files, { appId: appId }).then(urls => {
               console.log('urls', urls);
               cardValue.mediaArr = cardValue.mediaArr.map((x, i) => {
                 if (x.file && ((2 * i + 1) < urls.length)) {

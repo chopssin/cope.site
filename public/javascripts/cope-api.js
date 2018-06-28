@@ -851,6 +851,10 @@ cope.prop('render', function() {
 }()); // end of cope.prop('render', renderConstruct())
 
 cope.prop('uploadFiles', (a, options) => { // a should be an array of files
+
+  // Deal with options
+  let appId = options && options.appId;
+
   let files = a;
   //let counter = 0;
   let wait = cope.wait();
@@ -912,11 +916,17 @@ cope.prop('uploadFiles', (a, options) => { // a should be an array of files
         queue.add(next => {
           // Cope upload
           console.log('downloadURL = ' + downloadURL);
-          cope.send('/file/add', {
+          let fileValue =  {
             name: filename,
             type: file.type || 'unknown',
             url: downloadURL
-          }).then(res => {
+          };
+          if (appId) {
+            fileValue.appId = appId;
+          }
+          console.log(fileValue);
+
+          cope.send('/file/add', fileValue).then(res => {
             urls[idx] = downloadURL;
             //counter += 1;
             //console.log('Saved', counter, files.length);
