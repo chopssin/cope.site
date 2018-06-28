@@ -6,7 +6,10 @@ cope.render('/app/cards', obj => {
         { '.col-12[width:100%]': [
           { 'button.btn.btn-primary[float:right]@doneBtn': 'Done' }]
         },
-        { '.col-12@card-editor[width:100%]': '' }] 
+        { '.col-12@card-editor[width:100%]': '' },
+        { '.col-12[width:100%; text-align:center]': [
+          { 'button.btn.btn-danger@delBtn': 'Delete Card' }]
+        }]
       },
       { '@cards-wrap': [
         { 'button.btn.btn-primary@createBtn': 'Create' },
@@ -63,6 +66,9 @@ cope.render('/app/cards', obj => {
       let editor = cope.ui.build('Cope.Card.Editor', {
         sel: vu.sel('@card-editor')
       });
+
+      vu.$('@delBtn').hide();
+
       vu.editor = function() {
         return editor;
       };
@@ -74,6 +80,7 @@ cope.render('/app/cards', obj => {
         vu.editor().load(v);
         if (v.id) {
           vu.editor().set('cardId', v.id);
+          vu.$('@delBtn').show();
         }
       }
       vu.$('@cards-wrap').hide(); 
@@ -126,8 +133,9 @@ cope.render('/app/cards', obj => {
             });
 
             cope.uploadFiles(files).then(urls => {
+              console.log('urls', urls);
               cardValue.mediaArr = cardValue.mediaArr.map((x, i) => {
-                if (x.file && urls[i]) {
+                if (x.file && ((2 * i + 1) < urls.length)) {
                   return {
                     image: {
                       originalURL: urls[2 * i],

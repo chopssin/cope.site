@@ -591,7 +591,7 @@ cope.prop('ui', function() {
 
                 if (x.image.resizedURL) {
                   imgDiv.set('url', x.image.resizedURL);
-                  imgDiv.$('@image').html(cope.dom(['img(src="' + x.image.resizedURL + '" width="100%")']));
+                  imgDiv.$('@image').html(cope.dom([['img(src="' + x.image.resizedURL + '" width="100%")']]));
                 } else if (x.image.img) {
                   x.image.img.style.width = '100%';
                   imgDiv.$('@image').html(x.image.img);
@@ -871,6 +871,7 @@ cope.prop('uploadFiles', (a, options) => { // a should be an array of files
     }
     files.map((file, idx) => {
       if (!file) {
+        counter += 1;
         return;
       }
       let queue = cope.queue()
@@ -899,11 +900,14 @@ cope.prop('uploadFiles', (a, options) => { // a should be an array of files
                 downloadURL = url;
                 next(); 
               });
+            }).catch(err => {
+              console.error(err);
             });
         });
       });
       queue.add(next => {
         // Cope upload
+        console.log('downloadURL = ' + downloadURL);
         cope.send('/file/add', {
           name: filename,
           type: file.type || 'unknown',
@@ -911,7 +915,9 @@ cope.prop('uploadFiles', (a, options) => { // a should be an array of files
         }).then(res => {
           urls[idx] = downloadURL;
           counter += 1;
+          console.log('Saved', counter, files.length);
           if (counter == files.length) {
+            console.log('Resolved.');
             resolve(urls);     
           }
         });
