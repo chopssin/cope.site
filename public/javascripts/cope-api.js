@@ -852,7 +852,8 @@ cope.prop('render', function() {
 
 cope.prop('uploadFiles', (a, options) => { // a should be an array of files
   let files = a;
-  let counter = 0;
+  //let counter = 0;
+  let wait = cope.wait();
   let urls = [];
   if (a && !Array.isArray(a) && typeof a == 'object' && a.file) {
     files = [a];
@@ -869,59 +870,68 @@ cope.prop('uploadFiles', (a, options) => { // a should be an array of files
       resolve(urls);
       return;
     }
+
     files.map((file, idx) => {
-      if (!file) {
-        counter += 1;
-        return;
-      }
-      let queue = cope.queue()
-      let filename = cope.randId(16);
-      let downloadURL = null;
-      console.log(filename, file);
-      queue.add(next => {
-        // Firebase upload
-        let auth = cope.auth();
-        auth.fetch().then(() => {
-          let path = 'files';
-          if (auth.user()) {
-            path = 'files/' + auth.user().firebaseUID();
-            if (options && options.public) {
-              path = path + '/public';
-            } else {
-              path = path + '/private';
+      wait.add(done => {
+        if (!file) {
+          //counter += 1;
+          done();
+          return;
+        }
+        let queue = cope.queue()
+        let filename = cope.randId(16);
+        let downloadURL = null;
+        console.log(filename, file);
+        queue.add(next => {
+          // Firebase upload
+          let auth = cope.auth();
+          auth.fetch().then(() => {
+            let path = 'files';
+            if (auth.user()) {
+              path = 'files/' + auth.user().firebaseUID();
+              if (options && options.public) {
+                path = path + '/public';
+              } else {
+                path = path + '/private';
+              }
+            } else if (options && options.anonymously) {
+              path =  'files/anonymously';
             }
-          } else if (options && options.anonymously) {
-            path =  'files/anonymously';
-          }
-          console.log(path);
-          firebase.storage().ref(path).child(filename).put(file)
-            .then(snap => {
-              snap.ref.getDownloadURL().then(url => {
-                downloadURL = url;
-                next(); 
+            console.log(path);
+            firebase.storage().ref(path).child(filename).put(file)
+              .then(snap => {
+                snap.ref.getDownloadURL().then(url => {
+                  downloadURL = url;
+                  next(); 
+                });
+              }).catch(err => {
+                console.error(err);
               });
-            }).catch(err => {
-              console.error(err);
-            });
+          });
         });
-      });
-      queue.add(next => {
-        // Cope upload
-        console.log('downloadURL = ' + downloadURL);
-        cope.send('/file/add', {
-          name: filename,
-          type: file.type || 'unknown',
-          url: downloadURL
-        }).then(res => {
-          urls[idx] = downloadURL;
-          counter += 1;
-          console.log('Saved', counter, files.length);
-          if (counter == files.length) {
-            console.log('Resolved.');
-            resolve(urls);     
-          }
+        queue.add(next => {
+          // Cope upload
+          console.log('downloadURL = ' + downloadURL);
+          cope.send('/file/add', {
+            name: filename,
+            type: file.type || 'unknown',
+            url: downloadURL
+          }).then(res => {
+            urls[idx] = downloadURL;
+            //counter += 1;
+            //console.log('Saved', counter, files.length);
+            //if (counter == files.length) {
+            //  console.log('Resolved.');
+            //  resolve(urls);     
+            //}
+            done();
+          });
         });
-      });
+      }); // end of wait.add
     }); // end of a.map
+
+    wait.run(() => {
+      resolve(urls);
+    });
   }); // end of Promise
 }); // end of cope.prop('uploadFiles', func)

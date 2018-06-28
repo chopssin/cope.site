@@ -69,6 +69,27 @@ test('Start with function `test`', (next, stat) => {
   next();
 });
 
+test('cope.wait', (next, stat) => {
+  let wait = cope.wait();
+  wait.add(done => {
+    setTimeout(function() {
+      stat.$('@display').append('<p>First function done.</p>');
+      done();
+    }, 1000);
+  });
+
+  wait.add(done => {
+    stat.$('@display').append('<p>Second function done.</p>');
+    done();
+  });
+
+  wait.run(() => {
+    stat.$('@display').append('<p>Finally done.</p>');
+    stat.ok();
+    next();
+  });
+});
+
 test('cope.class and extensions', (next, stat) => {
   let Binit = false;
   let A = cope.class(vu => {

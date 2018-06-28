@@ -103,7 +103,6 @@ cope.render('/app/cards', obj => {
         // TBD: Save on Cope and Firebase
         let cardValue = vu.editor().fetch();
         let cardId = vu.editor().get('cardId');
-        let newCard = null;
         if (cardId) {
           vu.ds().set(cardId, cardValue);
         } else {
@@ -113,7 +112,7 @@ cope.render('/app/cards', obj => {
             cope.send('/card/add').then(res => {
               console.log(res);
               if (res.v && res.v.id) {
-                newCard = vu.addCard(res.v);
+                vu.addCard(res.v);
                 cardId = res.v.id;
                 next();
               }
@@ -151,9 +150,7 @@ cope.render('/app/cards', obj => {
                 updates: cardValue
               }).then(res => {
                 console.log('updates', res);
-                if (newCard) {
-                  newCard.load(cardValue);
-                }
+                vu.ds().set(cardId, cardValue); 
                 vu.closeEditor();
               });
             })

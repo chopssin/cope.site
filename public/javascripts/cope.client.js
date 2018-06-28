@@ -738,6 +738,51 @@ cope.views = function() {
   return V;
 }; // end of cope.views
 
+cope.wait = function() {
+  let counter = 0;
+  let waitAPI = {};
+  let funcs = [];
+  let funalRun = null;
+  let isRunning = false;
+  let done = function() {
+    counter += 1;
+    if (counter == funcs.length) {
+      if (typeof finalRun == 'function') {
+        finalRun();
+      }
+    }
+  }
+  waitAPI.add = function(fn) {
+    if (isRunning) {
+      console.error('#add: cope.wait() is running; failed to add function.');
+      return;
+    }
+    if (typeof fn == 'function') {
+      funcs = funcs.concat(fn);
+    }
+  }
+  waitAPI.run = function(fn) {
+    if (isRunning) {
+      console.error('#run: cope.wait() is already running');
+      return;
+    }
+    isRunning = true;
+    finalRun = fn;
+    if (funcs.length < 1) {
+      try {
+        finalRun();
+      } catch (err) {
+        console.error(err);
+      }
+    } else {
+      funcs.map(fn => {
+        fn(done);
+      });
+    }
+  }
+  return waitAPI;
+};
+
 cope.queue = function() {
   let idx = -1;
   let queueAPI = {};
