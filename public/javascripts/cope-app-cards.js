@@ -21,6 +21,26 @@ cope.render('/app/cards', obj => {
       }
     }());
 
+    vu.method('addCard', cardValue => {
+      let card = cope.ui.build('Cope.Card.Editable', {
+        sel: vu.sel('@cards'),
+        method: 'prepend'
+      });
+        
+      card.load(cardValue);
+
+      card.edit(() => {
+        vu.openEditor(card.fetch());
+        //vu.editor().load(cardData.value);
+      });
+
+      vu.ds().watch(card.cardId(), v => {
+        card.load(v);
+      });
+
+      return card;
+    }); // end of sectionCards.addCard
+
     vu.method('load', () => {
       cope.send('/card/all', { 
         'mine': true,
@@ -30,27 +50,13 @@ cope.render('/app/cards', obj => {
         try {
           Object.keys(res.data).map(cardNodeId => {
             let cardData = res.data[cardNodeId];
-            let card = cope.ui.build('Cope.Card.Editable', {
-              sel: vu.sel('@cards'),
-              method: 'append'
-            });
-              
-            card.load(cardData.value);
-
-            card.edit(() => {
-              vu.openEditor(card.fetch());
-              //vu.editor().load(cardData.value);
-            });
-
-            vu.ds().watch(card.cardId(), v => {
-              card.load(v);
-            });
-          })
+            vu.addCard(cardData.value);
+          });
         } catch (err) {
           console.error(err);
         }
       });   
-    });
+    }); // end of cardsSection.load
 
     // Build card editor
     vu.method('initEditor', function() {
@@ -85,56 +91,70 @@ cope.render('/app/cards', obj => {
       });
 
       vu.$('@doneBtn').click(evt => {
+        let queue = cope.queue();
+
         // TBD: Save on Cope and Firebase
         let cardValue = vu.editor().fetch();
         let cardId = vu.editor().get('cardId');
+        let newCard = null;
         if (cardId) {
           vu.ds().set(cardId, cardValue);
         } else {
           console.log(cardId, cardValue);
-        }
-        console.log(cardId, cardValue);
-        //cope.send('/card/update', {
-        //  id: cardId,
-        //  updates: cardValue
-        //});
-        try {
-          let files = [];
-          cardValue.mediaArr.map(x => {
-            if (x && x.file && x.image && x.image.blob) { 
-              files = files.concat([x.file, x.image.blob]);
-            } else {
-              files = files.concat([null, null]);
-            }
+          queue.add(next => {
+            // TBD: Get a new cardID
+            cope.send('/card/add').then(res => {
+              console.log(res);
+              if (res.v && res.v.id) {
+                newCard = vu.addCard(res.v);
+                cardId = res.v.id;
+                next();
+              }
+            });
           });
+        }
+        queue.add(next => {
+          console.log(cardId, cardValue);
+          try {
+            let files = [];
+            cardValue.mediaArr.map(x => {
+              if (x && x.file && x.image && x.image.blob) { 
+                files = files.concat([x.file, x.image.blob]);
+              } else {
+                files = files.concat([null, null]);
+              }
+            });
 
-          cope.uploadFiles(files).then(urls => {
-            cardValue.mediaArr = cardValue.mediaArr.map((x, i) => {
-              if (x.file && urls[i]) {
-                return {
-                  image: {
-                    originalURL: urls[2 * i],
-                    resizedURL: urls[2 * i + 1]
+            cope.uploadFiles(files).then(urls => {
+              cardValue.mediaArr = cardValue.mediaArr.map((x, i) => {
+                if (x.file && urls[i]) {
+                  return {
+                    image: {
+                      originalURL: urls[2 * i],
+                      resizedURL: urls[2 * i + 1]
+                    }
                   }
                 }
-              }
-              return x;
-            }); 
+                return x;
+              }); 
 
-            cope.send('/card/update', {
-              cardId: cardId,
-              updates: cardValue
-            }).then(res => {
-              console.log('updates', res);
-              vu.closeEditor();
-            });
-          })
-        } catch (err) {
-          console.error(err);
-        }
-        //vu.closeEditor();
-      });
-    });
+              cope.send('/card/update', {
+                cardId: cardId,
+                updates: cardValue
+              }).then(res => {
+                console.log('updates', res);
+                if (newCard) {
+                  newCard.load(cardValue);
+                }
+                vu.closeEditor();
+              });
+            })
+          } catch (err) {
+            console.error(err);
+          }
+        }); // end of queue.add(...)
+      }); // end of #click(...)
+    }); // end of sectionCards.init(...)
   }).build({
     sel: '#page-content'
   }); // end of sectionCards.build( ... )

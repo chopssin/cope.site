@@ -865,6 +865,10 @@ cope.prop('uploadFiles', (a, options) => { // a should be an array of files
   urls = files.map(x => null);
 
   return new Promise((resolve, reject) => {
+    if (files.length < 1) {
+      resolve(urls);
+      return;
+    }
     files.map((file, idx) => {
       if (!file) {
         return;
