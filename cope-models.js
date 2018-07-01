@@ -629,12 +629,22 @@ module.exports = function() {
   }); // end of "cope/post"
 
   M.createModel('cope/card', model => {
+    model.setBefore('add', (obj, userData, params) => {
+      return new Promise((resolve, reject) => {
+        if (typeof obj.appId != 'string') {
+          return reject('Lack of appId');
+        }
+        resolve(obj);
+      });
+    });
+
     model.setBefore('update', (obj, userData, params) => {
       return new Promise((resolve, reject) => {
         let valid = {};
         let id = obj && obj.cardId;
-        if (id) {
-          valid.query = { 'id': id };
+        let appId = obj && obj.appId;
+        if (id && appId) {
+          valid.query = { 'id': id, 'appId': appId };
           valid.updates = obj.updates;
           if (valid.updates && valid.updates.id) {
             delete valid.updates.id;
@@ -642,7 +652,7 @@ module.exports = function() {
           debug('cope/card: setmask: update', valid, obj, userData, params);
           resolve(valid);
         } else {
-          reject('Lack of `cardId`');
+          reject('Lack of `appId` or `cardId`');
         }
       });
     });

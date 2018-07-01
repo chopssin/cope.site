@@ -43,6 +43,23 @@ router.get('/:appId', function(req, res, next) {
   }
 });
 
+router.get('/:appId/card/:cardId', function(req, res, next) {
+  let appHost = hostname(req);
+  let appId = req.params.appId;
+  let cardId = req.params.cardId;
+  if (appHost) {
+    debug('Requesting page on ' + appHost);
+    res.render('appIndex');
+  } else {
+    debug('Requesting Cope');
+    res.render('cope-app-card', { // Single card 
+      title: 'Cope', 
+      appId: appId,
+      cardId: cardId
+    });
+  }
+});
+
 router.get('/:appId/post/:postId', function(req, res, next) {
   let appHost = hostname(req);
   let appId = req.params.appId;

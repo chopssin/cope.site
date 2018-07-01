@@ -25,17 +25,27 @@ cope.render('/app/cards', obj => {
     }());
 
     vu.method('addCard', cardValue => {
-      let card = cope.ui.build('Cope.Card.Editable', {
+      //let card = cope.ui.build('Cope.Card.Editable', {
+      let card = cope.ui.build('Cope.Card', {
         sel: vu.sel('@cards'),
         method: 'prepend'
       });
         
       card.load(cardValue);
 
-      card.edit(() => {
-        vu.openEditor(card.fetch());
+      card.$().css('cursor', 'pointer')
+        .on('click', evt => {
+          try {
+            location.href = '/' + appId + '/card/' + cardValue.id
+          } catch (err) {
+            console.error(err);
+          }
+        });
+
+      //card.edit(() => {
+      //  vu.openEditor(card.fetch());
         //vu.editor().load(cardData.value);
-      });
+      //});
 
       vu.ds().watch(card.cardId(), v => {
         card.load(v);
