@@ -119,13 +119,17 @@ cope.render('/app/cards', obj => {
           console.log(cardId, cardValue);
           queue.add(next => {
             // TBD: Get a new cardID
-            cope.send('/card/add').then(res => {
+            cope.send('/card/add', {
+              appId: appId 
+            }).then(res => {
               console.log(res);
               if (res.v && res.v.id) {
                 vu.addCard(res.v);
                 cardId = res.v.id;
                 next();
               }
+            }).catch(err => {
+              console.error(err);
             });
           });
         }
@@ -155,7 +159,10 @@ cope.render('/app/cards', obj => {
                 return x;
               }); 
 
+              console.log('before updating', cardValue);
+
               cope.send('/card/update', {
+                appId: appId,
                 cardId: cardId,
                 updates: cardValue
               }).then(res => {
