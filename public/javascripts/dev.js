@@ -88,6 +88,24 @@ test('cope.wait', (next, stat) => {
     stat.ok();
     next();
   });
+
+  // TBD
+  let outer = function(fn) {
+    let wait = cope.wait();
+    wait.add(done => {
+      done();
+      fn();
+    });
+    wait.run(() => {
+      console.log('1'); 
+    });
+  };
+  outer(() => {
+    let wait = cope.wait();
+    wait.run(() => {
+      console.log('2');
+    });
+  });
 });
 
 test('cope.class and extensions', (next, stat) => {

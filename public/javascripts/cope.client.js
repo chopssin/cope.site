@@ -742,7 +742,7 @@ cope.wait = function() {
   let counter = 0;
   let waitAPI = {};
   let funcs = [];
-  let funalRun = null;
+  let finalRun = null;
   let isRunning = false;
   let done = function() {
     counter += 1;
@@ -764,6 +764,10 @@ cope.wait = function() {
   waitAPI.run = function(fn) {
     if (isRunning) {
       console.error('#run: cope.wait() is already running');
+      return;
+    }
+    if (finalRun) {
+      console.error('run', finalRun);
       return;
     }
     isRunning = true;

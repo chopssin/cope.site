@@ -147,7 +147,6 @@ cope.prop('auth', function() {
       queue.add(next => {
         if (firebase.auth().currentUser) {
           cope.send('/account/me').then(res => {
-            console.log(res);
             userData = res && res.data;
             next();
           })
@@ -303,7 +302,7 @@ cope.prop('ui', function() {
     }); // end of UI.Table.createRowDOM
 
     vu.method('append', function() {
-      console.log(arguments)
+      //console.log(arguments)
       let target = arguments[0] || null;
       let sel;
       try {
@@ -556,7 +555,6 @@ cope.prop('ui', function() {
 
     vu.method('initMedia', function() {
       let Media = cope.class(vu => {
-        console.log('Constructing Media')
         let loader = cope.fileLoader(inputs => {
           vu.load(inputs);
         });
@@ -859,10 +857,11 @@ cope.prop('uploadFiles', (a, options) => { // a should be an array of files
   //let counter = 0;
   let wait = cope.wait();
   let urls = [];
-  if (a && !Array.isArray(a) && typeof a == 'object' && a.file) {
+  if (a && !Array.isArray(a) && typeof a == 'object') {
     files = [a];
   }
-  if (!Array.isArray(a)) {
+  if (!Array.isArray(files)) {
+    console.error('Invalid file:', a);
     throw 'cope.uploadFiles(a, options): a should be array or object containing `file`'
     return;
   }
@@ -878,14 +877,13 @@ cope.prop('uploadFiles', (a, options) => { // a should be an array of files
     files.map((file, idx) => {
       wait.add(done => {
         if (!file) {
-          //counter += 1;
           done();
           return;
         }
         let queue = cope.queue()
         let filename = cope.randId(16);
         let downloadURL = null;
-        console.log(filename, file);
+        //console.log(filename, file);
         queue.add(next => {
           // Firebase upload
           let auth = cope.auth();
@@ -901,7 +899,7 @@ cope.prop('uploadFiles', (a, options) => { // a should be an array of files
             } else if (options && options.anonymously) {
               path =  'files/anonymously';
             }
-            console.log(path);
+            //console.log(path);
             firebase.storage().ref(path).child(filename).put(file)
               .then(snap => {
                 snap.ref.getDownloadURL().then(url => {
@@ -912,10 +910,10 @@ cope.prop('uploadFiles', (a, options) => { // a should be an array of files
                 console.error(err);
               });
           });
-        });
+        }); // end of queue.add(...)
         queue.add(next => {
           // Cope upload
-          console.log('downloadURL = ' + downloadURL);
+          // console.log('downloadURL = ' + downloadURL);
           let fileValue =  {
             name: filename,
             type: file.type || 'unknown',
@@ -924,7 +922,7 @@ cope.prop('uploadFiles', (a, options) => { // a should be an array of files
           if (appId) {
             fileValue.appId = appId;
           }
-          console.log(fileValue);
+          //console.log(fileValue);
 
           cope.send('/file/add', fileValue).then(res => {
             urls[idx] = downloadURL;
@@ -935,12 +933,15 @@ cope.prop('uploadFiles', (a, options) => { // a should be an array of files
             //  resolve(urls);     
             //}
             done();
+          }).catch(err => {
+            console.error(err);
           });
-        });
+        }); // end of queue.add(...)
       }); // end of wait.add
     }); // end of a.map
 
-    wait.run(() => {
+    wait.run(function() {
+      //console.log(urls);
       resolve(urls);
     });
   }); // end of Promise
