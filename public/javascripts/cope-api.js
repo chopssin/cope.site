@@ -924,12 +924,12 @@ cope.prop('ui', function() {
     }); // end of Cope.Page.Editor.fetch
 
     vu.method('load', v => {
-      vu.$('@status').html('');
+      let s = 'Unpublished';
+      vu.$('@status').html(s);
       vu.$('@path').html('');
       if (!v) {
         return;
       }
-      let s = 'Unpublished';
       let t = v.publishedAt;
       let p = v.path || '';
       let now = Date.now();
