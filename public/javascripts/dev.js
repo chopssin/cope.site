@@ -75,7 +75,7 @@ test('cope.wait', (next, stat) => {
     setTimeout(function() {
       stat.$('@display').append('<p>First function done.</p>');
       done();
-    }, 1000);
+    }, 100);
   });
 
   wait.add(done => {
@@ -87,24 +87,6 @@ test('cope.wait', (next, stat) => {
     stat.$('@display').append('<p>Finally done.</p>');
     stat.ok();
     next();
-  });
-
-  // TBD
-  let outer = function(fn) {
-    let wait = cope.wait();
-    wait.add(done => {
-      done();
-      fn();
-    });
-    wait.run(() => {
-      console.log('1'); 
-    });
-  };
-  outer(() => {
-    let wait = cope.wait();
-    wait.run(() => {
-      console.log('2');
-    });
   });
 });
 
@@ -652,6 +634,7 @@ test('Cope.Page.Editor', (next, stat) => {
   if (pageEditor.fetch()) {
     stat.ok();
   }
+
   next();
 });
 

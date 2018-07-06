@@ -884,10 +884,26 @@ cope.prop('ui', function() {
               { 'span.input-group-text': 'Name' }] 
             },
             { 'input.form-control(placeholder="2018-12-01, no-3a, ABCD, 1234, ...")@name': '' }] 
-          }] 
+          }, 
+          { 'div[w:100%]': [ 
+            { 'button.btn.btn-primary@doneBtn[float:right]': 'Done' },
+            { 'button.btn.btn-primary@editBtn[float:right]': 'Edit' }]
+          }]
         }]
       }
     ]); // end of Cope.Page.Editor.dom(...)
+
+    vu.method('edit', () => {
+      vu.$('@editBtn').hide();
+      vu.$('@doneBtn').show();
+      vu.$('.input-group').fadeIn();
+    });
+
+    vu.method('done', () => {
+      vu.$('@editBtn').show();
+      vu.$('@doneBtn').hide();
+      vu.$('.input-group').hide();
+    });
 
     vu.method('fetch', () => {
       try { 
@@ -1012,6 +1028,15 @@ cope.prop('ui', function() {
           .on('keyup', updateStatus);
       });
 
+      vu.$('@doneBtn').on('click', evt => {
+        vu.done();
+      });
+
+      vu.$('@editBtn').on('click', evt => {
+        vu.edit();
+      });
+
+      vu.done();
       vu.load();
     }); // end of Cope.Page.Editor.init(...)
   })); // end of Cope.Page.Editor
