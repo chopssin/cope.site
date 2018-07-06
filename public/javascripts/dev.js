@@ -644,6 +644,28 @@ test('Cope.Card.Editor', (next, stat) => {
   next();
 });
 
+test('Cope.Page.Editor', (next, stat) => {
+  //let pageEditor = cope.ui.build('Cope.Page.Editor', {
+  //  sel: stat.sel('@display')
+  //});
+
+  let pageSettings = cope.ui.build('Cope.Card', {
+    sel: stat.sel('@display'),
+    method: 'append'
+  })
+
+  pageSettings.load({
+    isActive: {
+      mediaArr: false
+      //header: true,
+      //text: true
+    },
+    header: 'Published',
+    text: '/events/2018-08-08-special'
+  });
+  next();
+});
+
 test('End with this test', (next, stat) => {
   stat.ok();
   next();

@@ -335,6 +335,33 @@ cope.prop('ui', function() {
 
     vu.method('ds', function() {
       let ds = cope.dataStore();
+      ds.watch('isActive', v => {
+        Object.keys(v).map(k => {
+          switch (k) {
+            case 'mediaArr':
+              if (!v[k]) {
+                vu.$('@media').hide();
+              }
+              break;
+            case 'header':
+              if (!v[k]) {
+                vu.$('@header').hide();
+              }
+              break;
+            case 'text':
+              if (!v[k]) {
+                vu.$('@text').hide();
+              }
+              break;
+            case 'keyValues':
+              if (!v[k]) {
+                vu.$('@kv-table').hide();
+              }
+              break;
+            default:
+          } // end of switch
+        });
+      });
       ds.watch('header', header => {
         vu.$('@header').html(header);
       });
