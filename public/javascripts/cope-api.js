@@ -325,7 +325,7 @@ cope.prop('ui', function() {
       { '.card[mt:4px]': [
         { '.card-img-top[bgColor:#a37fb2;min-height:100px;overflow:hidden]@media': '' },
         { '.card-body': [
-          { 'h4@header': '' },
+          { 'h3@header': '' },
           { 'p@text': '' },
           { '@kv-table[bgColor:#fafafa]': '' }]
           //{ 'div.table@kv-table[bgColor:#fafafa]': '' }]
@@ -452,8 +452,11 @@ cope.prop('ui', function() {
       let onEdit;
       return function(fn) {
         if (typeof fn == 'function' && !onEdit) {
-          vu.$('.card').prepend(cope.dom([
-            { 'button.btn.btn-primary@editBtn[absolute;max-width:104px;top:8px;right:8px;will-change:auto;z-index:1]': 'Edit' }
+          vu.$('.card-body').prepend(cope.dom([
+            { 'div[w:100%; float:right]': [
+              //{ 'button.btn.btn-primary@editBtn[absolute;max-width:104px;top:8px;right:8px;will-change:auto;z-index:1]': 'Edit' }
+              { 'button.btn.btn-primary@editBtn[float:right;will-change:auto;z-index:1]': 'Edit' }] 
+            }
           ], vu.id));
 
           vu.$('@editBtn').on('click', evt => {
@@ -854,7 +857,7 @@ cope.prop('ui', function() {
       { 'div.card': [
         { '.card-body': [
           { 'div.h3@status': '' },
-          { 'div.h5@path': '' },
+          { 'p@path': '' },
           { '.input-group': [
             { '.input-group-prepend': [
               { 'span.input-group-text': 'Date' }] 

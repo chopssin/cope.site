@@ -76,8 +76,12 @@ cope.render('/app/card', obj => {
       appId: appId,
       id: cardId
     }).then(res => {
-      let card = cope.ui.build('Cope.Card.Editable', {
+      let pageEditor = cope.ui.build('Cope.Page.Editor', {
         sel: '#page-content'
+      });
+      let card = cope.ui.build('Cope.Card.Editable', {
+        sel: '#page-content',
+        method: 'append'
       });
     
       if (res.v) {
