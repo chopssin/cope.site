@@ -146,6 +146,12 @@ setAPI('post', '/card/get', 'cope/card', 'get');
 setAPI('post', '/card/all', 'cope/card', 'getMany');
 setAPI('post', '/card/update', 'cope/card', 'update');
 
+setAPI('post', '/page/add', 'cope/page', 'add');
+setAPI('post', '/page/del', 'cope/page', 'del');
+setAPI('post', '/page/get', 'cope/page', 'get');
+setAPI('post', '/page/all', 'cope/page', 'getMany');
+setAPI('post', '/page/update', 'cope/page', 'update');
+
 setAPI('post', '/file/add', 'cope/file', 'add');
 setAPI('post', '/file/del', 'cope/file', 'del');
 setAPI('post', '/file/get', 'cope/file', 'get');

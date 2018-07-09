@@ -794,6 +794,7 @@ cope.prop('ui', function() {
     }); // end of Cope.Card.Editor.initTable
 
     vu.method('load', obj => {
+      console.log(obj);
       try {
         Object.keys(obj).map(key => {
           vu.ds().set(key, obj[key]);
@@ -853,6 +854,7 @@ cope.prop('ui', function() {
   })); // end of Cope.Card.Editor
 
   uiAPI.create('Cope.Page.Editor', cope.class(vu => {
+    let onDone;
     vu.dom(data => [
       { 'div.card': [
         { '.card-body': [
@@ -896,16 +898,23 @@ cope.prop('ui', function() {
       }
     ]); // end of Cope.Page.Editor.dom(...)
 
-    vu.method('edit', () => {
+    vu.method('expand', () => {
       vu.$('@editBtn').hide();
       vu.$('@doneBtn').show();
       vu.$('.input-group').fadeIn();
     });
 
-    vu.method('done', () => {
+    vu.method('collapse', () => {
       vu.$('@editBtn').show();
       vu.$('@doneBtn').hide();
       vu.$('.input-group').hide();
+      if (typeof onDone == 'function') {
+        onDone();
+      }
+    });
+
+    vu.method('done', fn => {
+      onDone = fn;
     });
 
     vu.method('fetch', () => {
@@ -920,11 +929,11 @@ cope.prop('ui', function() {
         }
 
         let channel = vu.$('@channel').val().trim().replace(/\//g, '');
-        let name = vu.$('@name').val().trim().replace(/\//g, '') || vu.get('defaultName');
+        let name = vu.$('@name').val().trim().replace(/\//g, '');
         let path = '/' + channel + '/' + name;
         let publishedAt = Date.parse(date) + 1000 * (hour * 3600 + min * 60); 
 
-        if (!channel || !name) {
+        if (!channel) {
           path = '';
         }
         if (isNaN(publishedAt)) {
@@ -932,17 +941,29 @@ cope.prop('ui', function() {
         }
         return {
           path: path,
+          channel: channel,
+          name: name,
           publishedAt: publishedAt
         }
       } catch (err) {
         return {
           path: '',
+          channel: '',
+          name: '',
           publishedAt: null
         }
       }
     }); // end of Cope.Page.Editor.fetch
 
     vu.method('load', v => {
+      try {
+        vu.$('@')
+      } catch (err) {
+        // Do nothing ...
+      }
+    });
+
+    vu.method('render', v => {
       let s = 'Unpublished';
       vu.$('@status').html(s);
       vu.$('@path').html('');
@@ -950,9 +971,10 @@ cope.prop('ui', function() {
         return;
       }
       let t = v.publishedAt;
-      let p = v.path || '';
+      let p = '';
       let now = Date.now();
-      let date, days, hour, min, channel, name;
+      let date, days, hour, min;
+      let channel, name;
       try {
         if (t && !isNaN(t)) {
           date = new Date(t).getFullYear()
@@ -980,7 +1002,7 @@ cope.prop('ui', function() {
       } catch (err) {
         // Do nothing ...
       }
-    }); // end of Cope.Page.Editor.load
+    }); // end of Cope.Page.Editor.render
 
     vu.init(data => {
       let updateStatus = function() {
@@ -1032,15 +1054,15 @@ cope.prop('ui', function() {
       });
 
       vu.$('@doneBtn').on('click', evt => {
-        vu.done();
+        vu.collapse();
       });
 
       vu.$('@editBtn').on('click', evt => {
-        vu.edit();
+        vu.expand();
       });
 
-      vu.done();
-      vu.load();
+      vu.collapse();
+      vu.render();
     }); // end of Cope.Page.Editor.init(...)
   })); // end of Cope.Page.Editor
   // === End of Cope components ===

@@ -1,5 +1,5 @@
 cope.render('/', obj => {
-  console.log(obj);
+  //console.log(obj);
   let appId = obj.appId;
 
   let main = cope.class(vu => {
@@ -62,40 +62,70 @@ cope.render('/', obj => {
     }); // end of main.load
 
     vu.method('search', text => {
-      let tags = {};
-      let split = text
-        .replace(/\,\s+/g, ',')
-        .replace(/\s+/g, ',')
-        .split(',')
-        .map(name => {
-          tags[name] = true;
-        })
-      tags = Object.keys(tags);
-      console.log(tags);
+      let texts = [];
+      let headers = {};
+      try {
+        texts = text
+          .replace(/\,\s+/g, ',')
+          .replace(/\s+/g, ',')
+          .split(',');
+      } catch (err) {
+        //console.error(err);
+        texts = []; 
+      }
+      if (!Array.isArray(texts)) {
+        texts = [];
+        return;
+      }
+      //console.log(texts);
 
       let cardsData = vu.get('cardsData');
+      let findMatch = function(str, loosenSearch) {
+        if (!str || str.length < 1) {
+          return false;
+        }
+        let matched = false;
+        texts.map(t => {
+          if (loosenSearch) {
+            if (str.indexOf(t) > -1) {
+              matched = true;
+            }
+          } else if (t == str) {
+            matched = true;
+          }
+        });
+        return matched;
+      };
       let filtered = [];
       try {
         cardsData.map(c => {
-          console.log(c.value.tags);
-          let matched = true;
-          tags.map(t => {
-            try {
-              if (!c.value.tags[t]) {
-                matched = false;
+          try {
+            let matched = false;
+            c.value.keyValues.map(kv => {
+              if (findMatch(kv.key)) {
+                matched = true;
+                headers[kv.key] = true;
+              } 
+              if (findMatch(kv.value)) {
+                matched = true;
               }
-            } catch (err) {
-              matched = false;
+            });
+            if (findMatch(c.value.header, true)
+              || findMatch(c.value.text, true)) {
+              console.log(c.value);
+              matched = true;
             }
-          });
-          if (matched) {
-            filtered = filtered.concat(c);
+            if (matched) {
+              filtered = filtered.concat(c);
+            }
+          } catch (err) {
+            // Do nothing ... 
+            // console.error(err, c);
           }
         });
       } catch (err) {
         console.error(err);
       }
-      console.log(filtered);
 
       vu.$('@cards').html('');
 
@@ -103,25 +133,91 @@ cope.render('/', obj => {
         sel: vu.sel('@table')
       });
 
+      // Add table headers
+      headers = texts.reduce((arr, t) => {
+        if (headers[t]) {
+          arr = arr.concat(t);
+        }
+        return arr;
+      }, []);
 
-      // Add table  headers
-      table.append.apply(null, [null].concat(tags.map(name => {
+      if (headers.length > 0) {
+        headers = ['#'].concat(headers);
+      }
+
+      table.append.apply(null, [null].concat(headers.map(name => {
         return { 'div[fw:800]': name }
       })));
 
-      filtered.map(cardData => {
+      filtered = filtered.concat([
+        'SUM', 'COUNT', 'AVG', 'MIN', 'MAX'
+      ]);
+      let sums = [];
+      let counts = [];
+      let mins = [];
+      let maxes = [];
+      filtered.map((cardData, idx) => {
         let cells = [null];
-        cells = cells.concat(tags.map(name => {
-          cardData.value[name]
+        cells = cells.concat(headers.map((name, j) => {
+          //cardData.value[name]
           let v = '';
+          if (typeof cardData == 'string') { 
+            if (j >= headers.length - 5 || j == 0) {
+              switch (cardData) {
+                case 'SUM':
+                  return j == 0 ? 'SUM' : String(sums[j]);
+                  break;
+                case 'COUNT':
+                  return j == 0 ? 'COUNT' : String(counts[j]);
+                  break;
+                case 'AVG':
+                  return j == 0 ? 'AVG' : String(sums[j] / counts[j]);
+                  break;
+                case 'MIN':
+                  return j == 0 ? 'MIN' : String(mins[j]);
+                  break;
+                case 'MAX':
+                  return j == 0 ? 'MAX' : String(maxes[j]);
+                  break;
+                default:
+              }
+            } 
+            return '';
+          }
+          if (j == 0) {
+            try { 
+              return [ 'a(href="/' + appId + '/card/' 
+                + cardData.value.id
+                + '" target="_blank")', String(idx + 1) ]
+            } catch (err) {
+              console.error(err, cardData);
+              return '';
+            }
+          }
           cardData.value.keyValues.map(kv => {
             if (kv.key == name && !v) {
               v = kv.value;
+              let n = parseFloat(v, 10);
+              if (!isNaN(n)) {
+                if (!sums[j]) {
+                  sums[j] = 0;
+                }
+                if (!counts[j]) {
+                  counts[j] = 0;
+                }
+                sums[j] += n;
+                counts[j] += 1;
+                if (isNaN(mins[j]) || mins[j] > n) {
+                  mins[j] = n;
+                }
+                if (isNaN(maxes[j]) || maxes[j] < n) {
+                  maxes[j] = n;
+                }
+              }
             }
           });
           return v;
         }));
-        console.log(cells);
         table.append.apply(null, cells);
         
         let card = cope.ui.build('Cope.Card', {
@@ -138,7 +234,7 @@ cope.render('/', obj => {
             }
           });
       });
-    });
+    }); // end of main.search
 
     vu.init(data => {
       vu.load();

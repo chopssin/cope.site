@@ -634,12 +634,22 @@ module.exports = function() {
         if (typeof obj.appId != 'string') {
           return reject('Lack of appId');
         }
+        try {
+          delete obj.tags;
+        } catch (err) {
+        
+        }
         resolve(obj);
       });
     });
 
     model.setBefore('update', (obj, userData, params) => {
       return new Promise((resolve, reject) => {
+        try {
+          delete obj.updates.tags;
+        } catch (err) {
+          // Do nothing 
+        }
         let valid = {};
         let id = obj && obj.cardId;
         let appId = obj && obj.appId;
@@ -731,6 +741,53 @@ module.exports = function() {
       });
     });
   }); // end of "cope/file"
+
+  M.createModel('cope/page', model => {
+    model.setBefore('add', (obj, userData, params) => {
+      return new Promise((resolve, reject) => {
+        if (!obj) {
+          return reject('Empty data');
+        }
+        if (typeof obj.appId != 'string') {
+          return reject('Lack of appId');
+        }
+        if (typeof obj.type != 'string') {
+          return reject('Lack of type');
+        }
+        if (typeof obj.contentId != 'string') {
+          return reject('Lack of contentId');
+        }
+        let valid = {};
+        valid.appId = obj.appId;
+        valid.type = obj.type;
+        valid.contentId = obj.contentId;
+        resolve(valid);
+      });
+    });
+
+    model.setBefore('update', (obj, userData, params) => {
+      return new Promise((resolve, reject) => {
+        if (!obj || !obj.updates || !obj.query) {
+          debug(obj);
+          return reject('Invalid query or updates');
+        }
+        let updates = obj.updates;
+        let valid = {};
+        valid.updates = {};
+        valid.query = obj.query;
+        if (typeof updates.path == 'string') { // e.g. project/no-3a
+          valid.updates.path = updates.path;
+        }
+        if (typeof updates.tags == 'object') {
+          valid.updates.tags = updates.tags;
+        }
+        if (typeof updates.publishedAt == 'number') {
+          valid.updates.publishedAt = updates.publishedAt;
+        }
+        resolve(valid);
+      });
+    });
+  }); // end of "cope/page"
 
   return false;
 }();
