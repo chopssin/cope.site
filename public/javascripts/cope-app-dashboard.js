@@ -165,13 +165,13 @@ cope.render('/', obj => {
             if (j >= headers.length - 5 || j == 0) {
               switch (cardData) {
                 case 'SUM':
-                  return j == 0 ? 'SUM' : String(sums[j]);
+                  return j == 0 ? 'SUM' : String(sums[j].toFixed(2));
                   break;
                 case 'COUNT':
                   return j == 0 ? 'COUNT' : String(counts[j]);
                   break;
                 case 'AVG':
-                  return j == 0 ? 'AVG' : String(sums[j] / counts[j]);
+                  return j == 0 ? 'AVG' : String((sums[j] / counts[j]).toFixed(2));
                   break;
                 case 'MIN':
                   return j == 0 ? 'MIN' : String(mins[j]);
