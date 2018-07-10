@@ -64,6 +64,7 @@ cope.render('/', obj => {
     vu.method('search', text => {
       let texts = [];
       let headers = {};
+      vu.$('@cards').html('');
       try {
         texts = text
           .replace(/\,\s+/g, ',')
@@ -95,28 +96,39 @@ cope.render('/', obj => {
           }
         });
         return matched;
+      }; // end of findMatch
+      let isContainingAllTexts = function(obj) { // check if a contains b
+        let yes = true;
+        texts.map(x => {
+          if (!obj[x]) {
+            yes = false;
+          }
+        });
+        return yes;
       };
-      let filtered = [];
+      let matches = [];
+      let tableRaws = [];
       try {
         cardsData.map(c => {
           try {
-            let matched = false;
+            let tmp = {};
             c.value.keyValues.map(kv => {
+              tmp[kv.key] = true;
+              tmp[kv.value] = true;
               if (findMatch(kv.key)) {
-                matched = true;
                 headers[kv.key] = true;
               } 
-              if (findMatch(kv.value)) {
-                matched = true;
-              }
             });
-            if (findMatch(c.value.header, true)
+            
+            //if (isContainingAllTexts(tmp)) {
+            //  tableRaws = tableRaws.concat(c);
+            //  matches = matches.concat(c);
+            //} else {
+            if (isContainingAllTexts(tmp)
+              || findMatch(c.value.header, true)
               || findMatch(c.value.text, true)) {
-              console.log(c.value);
-              matched = true;
-            }
-            if (matched) {
-              filtered = filtered.concat(c);
+              tableRaws = tableRaws.concat(c);
+              matches = matches.concat(c); 
             }
           } catch (err) {
             // Do nothing ... 
@@ -127,7 +139,26 @@ cope.render('/', obj => {
         console.error(err);
       }
 
-      vu.$('@cards').html('');
+      // Display matched cards
+      matches.map(cardData => {
+        try { 
+          let card = cope.ui.build('Cope.Card', {
+            sel: vu.sel('@cards'),
+            method: 'append'
+          });
+          card.load(cardData.value);
+          card.$().css('cursor', 'pointer')
+            .on('click', evt => {
+              try {
+                location.href = '/' + appId + '/card/' + cardData.value.id; 
+              } catch (err) {
+                console.error(err);
+              }
+            });
+        } catch (err) {
+          console.error(err);
+        }
+      }); // end of matches.map(...)
 
       let table = cope.ui.build('UI.Table', {
         sel: vu.sel('@table')
@@ -140,46 +171,48 @@ cope.render('/', obj => {
         }
         return arr;
       }, []);
-
       if (headers.length > 0) {
         headers = ['#'].concat(headers);
       }
-
       table.append.apply(null, [null].concat(headers.map(name => {
         return { 'div[fw:800]': name }
       })));
 
-      filtered = filtered.concat([
+      tableRaws = tableRaws.concat([
         'SUM', 'COUNT', 'AVG', 'MIN', 'MAX'
       ]);
       let sums = [];
       let counts = [];
       let mins = [];
       let maxes = [];
-      filtered.map((cardData, idx) => {
+      tableRaws.map((cardData, idx) => {
         let cells = [null];
         cells = cells.concat(headers.map((name, j) => {
           //cardData.value[name]
           let v = '';
           if (typeof cardData == 'string') { 
             if (j >= headers.length - 5 || j == 0) {
-              switch (cardData) {
-                case 'SUM':
-                  return j == 0 ? 'SUM' : String(sums[j].toFixed(2));
-                  break;
-                case 'COUNT':
-                  return j == 0 ? 'COUNT' : String(counts[j]);
-                  break;
-                case 'AVG':
-                  return j == 0 ? 'AVG' : String((sums[j] / counts[j]).toFixed(2));
-                  break;
-                case 'MIN':
-                  return j == 0 ? 'MIN' : String(mins[j]);
-                  break;
-                case 'MAX':
-                  return j == 0 ? 'MAX' : String(maxes[j]);
-                  break;
-                default:
+              try { 
+                switch (cardData) {
+                  case 'SUM':
+                    return j == 0 ? 'SUM' : String(sums[j].toFixed(2));
+                    break;
+                  case 'COUNT':
+                    return j == 0 ? 'COUNT' : String(counts[j]);
+                    break;
+                  case 'AVG':
+                    return j == 0 ? 'AVG' : String((sums[j] / counts[j]).toFixed(2));
+                    break;
+                  case 'MIN':
+                    return j == 0 ? 'MIN' : String(mins[j]);
+                    break;
+                  case 'MAX':
+                    return j == 0 ? 'MAX' : String(maxes[j]);
+                    break;
+                  default:
+                }
+              } catch (err) {
+                // Do nothing ...
               }
             } 
             return '';
@@ -215,25 +248,11 @@ cope.render('/', obj => {
                 }
               }
             }
-          });
+          }); // end of cardData...map(...)
           return v;
-        }));
+        })); // end of cells.concat(...)
         table.append.apply(null, cells);
-        
-        let card = cope.ui.build('Cope.Card', {
-          sel: vu.sel('@cards'),
-          method: 'append'
-        });
-        card.load(cardData.value);
-        card.$().css('cursor', 'pointer')
-          .on('click', evt => {
-            try {
-              location.href = '/' + appId + '/card/' + cardData.value.id; 
-            } catch (err) {
-              console.error(err);
-            }
-          });
-      });
+      }); // end of tableRaws.map(...)
     }); // end of main.search
 
     vu.init(data => {
