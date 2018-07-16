@@ -152,6 +152,12 @@ setAPI('post', '/page/get', 'cope/page', 'get');
 setAPI('post', '/page/all', 'cope/page', 'getMany');
 setAPI('post', '/page/update', 'cope/page', 'update');
 
+setAPI('post', '/channel/add', 'cope/channel', 'add');
+setAPI('post', '/channel/del', 'cope/channel', 'del');
+setAPI('post', '/channel/get', 'cope/channel', 'get');
+setAPI('post', '/channel/all', 'cope/channel', 'getMany');
+setAPI('post', '/channel/update', 'cope/channel', 'update');
+
 setAPI('post', '/file/add', 'cope/file', 'add');
 setAPI('post', '/file/del', 'cope/file', 'del');
 setAPI('post', '/file/get', 'cope/file', 'get');

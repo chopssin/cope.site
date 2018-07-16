@@ -534,6 +534,20 @@ let newVu = function(obj, constructs) {
     }
   }; // end of vuAPI.val
 
+  // req means "require"
+  vuAPI.req = function(a) {
+    try { 
+      if (viewData.hasOwnProperty(a)) {
+        return viewData[a];
+      } else {
+        throw 'Failed to get "' + a + '"';
+      }
+    } catch (err) {
+      console.error('Failed to get "' + a + '"');
+      throw err;
+    }
+  }; // end of vuAPI.req
+
   // Render this view
   //if (typeof render == 'function') {
   //  render(vuAPI);
@@ -619,6 +633,17 @@ let newDS = function() {
 }; // end of newDS
 
 let cope = {};
+cope.isEmpty = function(test) {
+  try {
+    return (Object.keys(test).length === 0) 
+      && (test.constructor === Object 
+        || test.constructor === Array 
+        || typeof test == 'string');
+  } catch (err) {
+    // Do nothing ...
+  }
+  return false;
+};
 cope.randId = function(len) {
   if (!len) { len = 5 }
   let id = '';

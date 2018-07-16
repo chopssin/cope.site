@@ -631,9 +631,53 @@ test('Cope.Page.Editor', (next, stat) => {
     sel: stat.sel('@display')
   });
 
+  pageEditor.loadInputs({
+    publishedAt: new Date().getTime(),
+    channel: 'tests'
+  });
+
   if (pageEditor.fetch()) {
     stat.ok();
   }
+
+  next();
+});
+
+test('Cope.Channel.Editor', (next , stat) => {
+
+  let queue = cope.queue();
+  let testAppId, testCardId;
+
+  // Find a testAppId
+  queue.add(next => {
+    cope.send('/app/all').then(res => {
+      try {
+        let apps = Object.keys(res.data).map(nid => res.data[nid]);
+        if (apps && apps.length > 0) {
+          let testAppId = apps[0].value.id || apps[0].value.appId;
+          if (testAppId) {
+            next();
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  });
+
+  queue.add(next => {
+    let channelEditor = cope.ui.build('Cope.Channel.Editor', {
+      sel: stat.sel('@display'),
+      data: {
+        appId: testAppId
+      }
+    });
+
+    setTimeout(function() {
+      let channels = channelEditor.req('channels');
+      stat.ok();
+    }, 3000);
+  });
 
   next();
 });

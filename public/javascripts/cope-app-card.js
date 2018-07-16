@@ -82,6 +82,9 @@ cope.render('/app/card', obj => {
 
       pageEditor.done(() => {
         let queue = cope.queue();
+        let channelName = pageEditor.fetch().channel;
+        let publishedAt = pageEditor.fetch().publishedAt;
+        
         queue.add(next => {
           if (!pageEditor.get('pageId')) {
             cope.send('/page/add', {
@@ -100,44 +103,73 @@ cope.render('/app/card', obj => {
         });
         queue.add(next => {
           if (pageEditor.get('pageId')) {
-            let updates = {};
-            let fetched = pageEditor.fetch();
-            updates.channel = fetched.channel;
-            updates.name = fetched.name;
-            console.log(updates);
 
-            cope.send('/page/update', {
-              query: {
+            // Find channelId 
+            let channelId = null;
+            let queueForChannelId = cope.queue();
+            queueForChannelId.add(next => {
+              cope.send('/channel/get', {
                 appId: appId,
-                id: pageEditor.get('pageId')
-              },
-              updates: updates
-            }).then(res => {
-              console.log(res); 
+                name: channelName
+              }).then(res => {
+                if (res.ok && res.v && res.v.id) {
+                  channelId = res.v.id;
+                }
+                next();
+              })
             });
-          } 
-        });
-      });
+            queueForChannelId.add(next => {
+              if (!channelId && channelName) {
+                // Create new channel
+                cope.send('/channel/add', {
+                  appId: appId,
+                  name: channelName
+                }).then(res => {
+                  if (res.v && res.v.id) {
+                    channelId = res.v.id;
+                    next();
+                  }
+                });
+              } else if (channelId) {
+                next();
+              }
+            });
+
+            // Save the page
+            queueForChannelId.add(next => {
+              // Update page's published time and channelId
+              let updates = {};
+              updates.channelId = channelId;
+              updates.publishedAt = publishedAt;
+
+              cope.send('/page/update', {
+                query: {
+                  appId: appId,
+                  id: pageEditor.req('pageId')
+                },
+                updates: updates 
+              }).then(res => {
+                console.log(res); 
+              });
+            }); // end of queueForChannelId.add( ... )
+          } // end of if ( ...pageId... )
+        }); // end of queue.add( ... )
+      }); // end of pageEditor.done( ... ) 
 
       cope.send('/page/get', {
         appId: appId,
         contentId: cardId
       }).then(res => {
+        console.log('page', res.v);
         if (res && res.v && res.v.id) {
           pageEditor.set('pageId', res.v.id);
 
-          let path = '';
           if (res.v.channel) {
-            if (res.v.name) {
-              path = '/' + res.v.channel + '/' + res.v.name;
-            } else {
-              path = '/' + res.v.channel + '/' + cardId;
-            }
+            pageEditor.loadInputs({
+              publishedAt: res.v.publishedAt,
+              channel: res.v.channel
+            });
           }
-          pageEditor.load({
-            publishedAt: res.v.publishedAt,
-            path: path
-          });
         }
       });
 
@@ -153,7 +185,7 @@ cope.render('/app/card', obj => {
       card.edit(() => {
         editCard(card);
       });
-    });
+    });// end of cope.send('/card/get', ...)
   } // end of loadCard
 
   loadCard();

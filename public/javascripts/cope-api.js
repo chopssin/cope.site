@@ -858,8 +858,7 @@ cope.prop('ui', function() {
     vu.dom(data => [
       { 'div.card': [
         { '.card-body': [
-          { 'div.h3@status': '' },
-          { 'p@path': '' },
+          { 'div.h4@status': '' },
           { '.input-group': [
             { '.input-group-prepend': [
               { 'span.input-group-text': 'Date' }] 
@@ -874,9 +873,9 @@ cope.prop('ui', function() {
             { '.input-group-prepend': [
               { 'span.input-group-text': 'Time' }] 
             },
-            { 'input.form-control(placeholder="00")@hour': '' }, 
+            { 'input.form-control(placeholder="00")@hours': '' }, 
             { 'span.input-group-text': ':' },
-            { 'input.form-control(placeholder="00")@min': '' }] 
+            { 'input.form-control(placeholder="00")@mins': '' }] 
           }, 
           { '.input-group': [
             { '.input-group-prepend': [
@@ -884,13 +883,8 @@ cope.prop('ui', function() {
             },
             { 'input.form-control(placeholder="items, projects, events, ...")@channel': '' }] 
           }, 
-          { '.input-group': [
-            { '.input-group-prepend': [
-              { 'span.input-group-text': 'Name' }] 
-            },
-            { 'input.form-control(placeholder="2018-12-01, no-3a, ABCD, 1234, ...")@name': '' }] 
-          }, 
           { 'div[w:100%]': [ 
+            { 'button.btn.btn-secondary@unpubBtn': 'Unpublish' },
             { 'button.btn.btn-primary@doneBtn[float:right]': 'Done' },
             { 'button.btn.btn-primary@editBtn[float:right]': 'Edit' }]
           }]
@@ -917,11 +911,38 @@ cope.prop('ui', function() {
       onDone = fn;
     });
 
+    vu.method('readTime', t => {
+      let date = '';
+      let days = '';
+      let hours = '';
+      let mins = '';
+      if (t && !isNaN(t)) {
+        date = new Date(t).getFullYear()
+          + '/' + (new Date(t).getMonth() + 1)
+          + '/' + new Date(t).getDate();
+        days = Math.ceil((t - Date.now()) / 86400000);
+        hours = new Date(t).getHours();
+        mins = new Date(t).getMinutes();
+        if (hours < 10) {
+          hours = '0' + hours;
+        }
+        if (mins < 10) {
+          mins = '0' + mins;
+        }
+      }
+      return {
+        date: date,
+        days: days,
+        hours: hours,
+        mins: mins
+      };
+    }); // end of Cope.Page.Editor.readTime
+
     vu.method('fetch', () => {
       try { 
         let date = vu.$('@date').val().trim();
-        let hour = Number(vu.$('@hour').val().trim());
-        let min = Number(vu.$('@min').val().trim());
+        let hour = Number(vu.$('@hours').val().trim());
+        let min = Number(vu.$('@mins').val().trim());
 
         if (isNaN(hour) || isNaN(min)) {
           hour = 0;
@@ -929,84 +950,95 @@ cope.prop('ui', function() {
         }
 
         let channel = vu.$('@channel').val().trim().replace(/\//g, '');
-        let name = vu.$('@name').val().trim().replace(/\//g, '');
-        let path = '/' + channel + '/' + name;
         let publishedAt = Date.parse(date) + 1000 * (hour * 3600 + min * 60); 
 
-        if (!channel) {
-          path = '';
-        }
         if (isNaN(publishedAt)) {
           publishedAt = null;
         }
         return {
-          path: path,
           channel: channel,
-          name: name,
           publishedAt: publishedAt
         }
       } catch (err) {
         return {
-          path: '',
           channel: '',
-          name: '',
           publishedAt: null
         }
       }
+      console.log('Update status');
     }); // end of Cope.Page.Editor.fetch
 
-    vu.method('load', v => {
+    vu.method('loadInputs', v => {
+      vu.$('@date').val('');
+      vu.$('@days').val('');
+      vu.$('@hours').val('');
+      vu.$('@mins').val('');
+      vu.$('@channel').val('');
       try {
-        vu.$('@')
+        if (v.publishedAt) {
+          let d = vu.readTime(v.publishedAt);
+          let days = Math.ceil((v.publishedAt - Date.now())/86400000);
+          vu.$('@date').val(d.date);
+          vu.$('@days').val(days);
+          vu.$('@hours').val(d.hours);
+          vu.$('@mins').val(d.mins);
+        }
+        if (v.channel) {
+          vu.$('@channel').val(v.channel);
+        }
+        vu.render(v);
       } catch (err) {
         // Do nothing ...
       }
-    });
+    }); // end of Cope.Page.Editor.load
 
     vu.method('render', v => {
       let s = 'Unpublished';
       vu.$('@status').html(s);
-      vu.$('@path').html('');
       if (!v) {
         return;
       }
       let t = v.publishedAt;
-      let p = '';
+      let c = '';
+      if (!cope.isEmpty(v.channel)) {
+        c = ' on channel <span style="font-weight:800">' + v.channel + '</span>'
+      }
       let now = Date.now();
-      let date, days, hour, min;
-      let channel, name;
+      //let date, days, hour, min;
       try {
         if (t && !isNaN(t)) {
-          date = new Date(t).getFullYear()
-            + '/' + (new Date(t).getMonth() + 1)
-            + '/' + new Date(t).getDate();
-          days = Math.ceil((t - now) / 86400000);
-          hour = new Date(t).getHours();
-          min = new Date(t).getMinutes();
-          if (hour < 10) {
-            hour = '0' + hour;
-          }
-          if (min < 10) {
-            min = '0' + min;
-          }
+          //date = new Date(t).getFullYear()
+          //  + '/' + (new Date(t).getMonth() + 1)
+          //  + '/' + new Date(t).getDate();
+          //days = Math.ceil((t - now) / 86400000);
+          //hour = new Date(t).getHours();
+          //min = new Date(t).getMinutes();
+
+          let d = vu.readTime(t);
+          //if (hour < 10) {
+          //  hour = '0' + hour;
+          //}
+          //if (min < 10) {
+          //  min = '0' + min;
+          //}
 
           if (t <= now) {
-            s = 'Published since ' + date + ' ' + hour + ':' + min;
+            s = 'Published since ' + d.date + ' ' + d.hours + ':' + d.mins + c;
           } else {
-            s = 'Scheduled at ' + date + ' ' + hour + ':' + min;
+            s = 'Scheduled at ' + d.date + ' ' + d.hours + ':' + d.mins + c;
           }
         }
 
         vu.$('@status').html(s);
-        vu.$('@path').html(p);
       } catch (err) {
         // Do nothing ...
       }
     }); // end of Cope.Page.Editor.render
 
     vu.init(data => {
+
       let updateStatus = function() {
-        vu.load(vu.fetch());
+        vu.render(vu.fetch());
       };
       let updateDays = function(evt) {
         let date = vu.$('@date').val().trim();
@@ -1028,8 +1060,10 @@ cope.prop('ui', function() {
         try {
           days = parseInt(days, 10);
           if (!isNaN(days)) {
-            date = new Date(Date.now() + days * 86400000);
-            date = date.getFullYear() + '/' + (date.getMonth() + 1) + '/' + date.getDate();
+            //date = new Date(Date.now() + days * 86400000);
+            let d = vu.readTime(Date.now() + days * 86400000);
+            date = d.date;
+            //date = date.getFullYear() + '/' + (date.getMonth() + 1) + '/' + date.getDate();
           }
         } catch (err) {
           console.error(err);
@@ -1046,7 +1080,7 @@ cope.prop('ui', function() {
         .on('focusout', updateDate)
         .on('click', updateDate)
         .on('keyup', updateDate);
-      ['@hour', '@min', '@channel', '@name'].map(sel => {
+      ['@hour', '@min', '@channel'].map(sel => {
         vu.$(sel)
           .on('focusout', updateStatus)
           .on('click', updateStatus)
@@ -1055,16 +1089,164 @@ cope.prop('ui', function() {
 
       vu.$('@doneBtn').on('click', evt => {
         vu.collapse();
+        updateStatus();
       });
 
       vu.$('@editBtn').on('click', evt => {
         vu.expand();
       });
 
+      vu.$('@unpubBtn').on('click', evt => {
+        vu.loadInputs();
+        vu.render();
+        vu.collapse();
+      });
+
       vu.collapse();
       vu.render();
     }); // end of Cope.Page.Editor.init(...)
   })); // end of Cope.Page.Editor
+
+  uiAPI.create('Cope.Channel.Editor', cope.class(vu => {
+    vu.dom(data => [
+      { 'div[w:100%; p:0]': [
+        { 'input.form-control(placeholder="Channel Name")@nameInput': '' },
+        { 'input.form-control(placeholder="Channel Slug")@slugInput': '' },
+        { 'div[w:100%]': [
+          { 'button.btn.btn-danger@delBtn': 'Delete' }, 
+          { 'button.btn.btn-secondary@saveBtn': 'Save' }] 
+        }] 
+      }
+    ]);
+    vu.method('load', () => {
+      try {
+        let appId = vu.req('appId');
+        let name = vu.req('name');
+
+        cope.send('/channel/get', {
+          appId: appId,
+          name: name
+        }).then(res => {
+          vu.$('@nameInput').val(res.v.name);
+          vu.$('@slugInput').val(res.v.slug);
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    });
+    vu.method('values', () => {
+      try {
+        let v = {};
+        v.name = vu.$('@nameInput').val().trim();
+        v.slug = vu.$('@slugInput').val().trim();
+        vu.val(v); // update local values
+        return v;
+      } catch (err) {
+        throw err;
+      }
+    });
+    vu.method('del', () => {
+      vu.values(); // update current input values
+    
+      cope.send('/channel/del', {
+        appId: vu.req('appId'),
+        name: vu.req('name')
+      }).then(res => {
+        console.log(res);
+      }).catch(err => {
+        console.error(err);
+      })
+    });
+    vu.method('save', () => {
+      vu.values(); // update current input values
+
+      let queue = cope.queue();
+      let channels = vu.req('channels');
+      let appId = vu.req('appId');
+      let name = vu.req('name');
+      let slug = vu.get('slug') || '';
+      let exists = false;
+
+      if (!name) {
+        return;
+      }
+
+      queue.add(next => {
+        // Find if channel exists
+        cope.send('/channel/get', {
+          appId: appId,
+          name: name
+        }).then(res => {
+          console.log(res);
+          if (cope.isEmpty(res.v)) {
+            cope.send('/channel/add', {
+              appId: appId,
+              name: name
+            }).then(res => {
+              console.log('Added Channel', res);
+            })
+            return;
+          } else {
+            next();
+          }
+        });
+      }); // end of queue.add(...)
+
+      queue.add(next => {
+        try {
+          cope.send('/channel/update', {
+            query: {
+              appId: appId,
+              name: name
+            },
+            updates: {
+              name: name,
+              slug: slug
+            }
+          }).then(res => {
+            console.log('Updated Channel', res);
+          });
+        } catch (err) {
+          console.error(err);
+        }
+      });
+    });
+    vu.method('getChannels', () => {
+      try {
+        let appId = vu.req('appId');
+        cope.send('/channel/all', {
+          appId: appId
+        }).then(res => {
+          let channels = {};
+          for (let nid in res.data) {
+            channels[res.data[nid].value.name] = res.data[nid];
+          }
+          vu.set('channels', channels);
+          console.log(channels);
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    });
+    vu.method('showChannels', filterText => {
+      try {
+        console.log(vu.get('channels'));
+      } catch (err) {
+        console.error(err);
+      }
+    });
+    vu.init(data => {
+      vu.getChannels();
+
+      vu.$('@saveBtn').click(evt => {
+        vu.save();
+      });
+
+      vu.$('@delBtn').click(evt => {
+        vu.del();
+      });
+    });
+  })); // end of Cope.Channel.Editor
   // === End of Cope components ===
 
   return uiAPI;

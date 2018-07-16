@@ -960,6 +960,8 @@ module.exports = function() {
                 node.del().then(() => {
                   resolve({ 'deleted': true });
                 });
+              } else {
+                reject({ 'deleted': 'Not found' });
               }
             });
           });
@@ -986,13 +988,14 @@ module.exports = function() {
       modelAPI.getMany = function(inputQuery, userData, params) {
         return new Promise((resolve, reject) => {
           modelAPI.before('getMany', inputQuery, userData, params).then(validQueries => {
-            if (validQueries.tags) {
-              modelAPI.findNodes(validQueries.tags).then(nodesDataObj => {
-                modelAPI.after('getMany', nodesDataObj, userData, params).then(maskedData => {
-                  resolve(maskedData);
-                });
-              });
-            } else if (validQueries.subsetArr) {
+            //if (validQueries.tags) {
+            //  modelAPI.findNodes(validQueries.tags).then(nodesDataObj => {
+            //    modelAPI.after('getMany', nodesDataObj, userData, params).then(maskedData => {
+            //      resolve(maskedData);
+            //    });
+            //  });
+            //}
+            if (validQueries.subsetArr) {
               let subset = modelAPI.sub();
               validQueries.subsetArr.map(subQuery => {
                 subset = subset.sub(subQuery.linkName, subQuery.source, subQuery.target);
@@ -1005,8 +1008,13 @@ module.exports = function() {
                 }); 
               });
             } else {
-              debug('Invalid query.', validQueries);
-              reject('Invalid query.');
+              modelAPI.findNodes(validQueries).then(nodesDataObj => {
+                modelAPI.after('getMany', nodesDataObj, userData, params).then(maskedData => {
+                  resolve(maskedData);
+                });
+              });
+              //debug('Invalid query.', validQueries);
+              //reject('Invalid query.');
             }
           });
         });

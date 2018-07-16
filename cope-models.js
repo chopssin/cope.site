@@ -742,6 +742,8 @@ module.exports = function() {
     });
   }); // end of "cope/file"
 
+  M.createModel('cope/channel'); // end of "cope/channel"
+
   M.createModel('cope/page', model => {
     model.setBefore('add', (obj, userData, params) => {
       return new Promise((resolve, reject) => {
@@ -775,8 +777,8 @@ module.exports = function() {
         let valid = {};
         valid.updates = {};
         valid.query = obj.query;
-        if (typeof updates.path == 'string') { // e.g. project/no-3a
-          valid.updates.path = updates.path;
+        if (typeof updates.channelId == 'string') { // e.g. project/no-3a
+          valid.updates.channelId = updates.channelId;
         }
         if (typeof updates.tags == 'object') {
           valid.updates.tags = updates.tags;
