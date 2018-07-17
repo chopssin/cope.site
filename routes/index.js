@@ -15,7 +15,7 @@ router.all('*', function(req, res, next) {
 });
 
 /* GET home page. */
-router.get('/admin', function(req, res, next) {
+router.get('/', function(req, res, next) {
   let appHost = hostname(req);
   //if (appHost) {
   //  debug('Requesting page on ' + appHost);

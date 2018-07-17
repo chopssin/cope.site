@@ -73,7 +73,7 @@ V.createClass('SignInCard', vu => {
       let pwd = vu.$('@pwd').val().trim();
       cope.auth().signIn(email, pwd).then(() => {
         //console.log(cope.auth().user());
-        location.href = '/a';
+        location.href = '/';
       });
       /*
       firebase.auth().signInWithEmailAndPassword(email, pwd)
@@ -120,9 +120,8 @@ cope.auth().fetch().then(() => {
 
   $('#page-content').html(V.dom([{ 'button.btn.btn-secondary#signOutBtn[float:right]': 'Sign Out' }]));
   $('#signOutBtn').click(evt => {
-    console.log('????');
     cope.auth().signOut().then(() => {
-      location.href = '/a';
+      location.href = '/';
     });
     /*
     try {
