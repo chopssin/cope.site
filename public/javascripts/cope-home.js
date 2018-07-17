@@ -24,7 +24,7 @@ V.createClass('AppCard', vu => {
     let v = data;
     if (v && v.value) { v = v.value; }
     vu.$('@appName').html(v.appName || 'Untitled App');
-    vu.$('.card-body').prop('href', '/' + v.appId);
+    vu.$('.card-body').prop('href', '/a/' + v.appId);
   });
 });
 
@@ -73,7 +73,7 @@ V.createClass('SignInCard', vu => {
       let pwd = vu.$('@pwd').val().trim();
       cope.auth().signIn(email, pwd).then(() => {
         //console.log(cope.auth().user());
-        location.href = '/';
+        location.href = '/a';
       });
       /*
       firebase.auth().signInWithEmailAndPassword(email, pwd)
@@ -122,7 +122,7 @@ cope.auth().fetch().then(() => {
   $('#signOutBtn').click(evt => {
     console.log('????');
     cope.auth().signOut().then(() => {
-      location.href = '/';
+      location.href = '/a';
     });
     /*
     try {

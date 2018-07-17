@@ -15,18 +15,18 @@ router.all('*', function(req, res, next) {
 });
 
 /* GET home page. */
-router.get('/', function(req, res, next) {
+router.get('/a', function(req, res, next) {
   let appHost = hostname(req);
-  if (appHost) {
-    debug('Requesting page on ' + appHost);
-    res.render('appIndex');
-  } else {
-    debug('Requesting Cope');
-    res.render('cope-home', { title: 'Cope' });
-  }
+  //if (appHost) {
+  //  debug('Requesting page on ' + appHost);
+  //  res.render('appIndex');
+  //} else {
+  //  debug('Requesting Cope');
+  res.render('cope-home', { title: 'Cope' });
+  //}
 });
 
-router.get('/:appId', function(req, res, next) {
+router.get('/a/:appId', function(req, res, next) {
   let appHost = hostname(req);
   let appId = req.params.appId;
   if (appHost) {
@@ -43,7 +43,7 @@ router.get('/:appId', function(req, res, next) {
   }
 });
 
-router.get('/:appId/card/:cardId', function(req, res, next) {
+router.get('/a/:appId/card/:cardId', function(req, res, next) {
   let appHost = hostname(req);
   let appId = req.params.appId;
   let cardId = req.params.cardId;
@@ -60,7 +60,7 @@ router.get('/:appId/card/:cardId', function(req, res, next) {
   }
 });
 
-router.get('/:appId/post/:postId', function(req, res, next) {
+router.get('/a/:appId/post/:postId', function(req, res, next) {
   let appHost = hostname(req);
   let appId = req.params.appId;
   let postId = req.params.postId;
@@ -78,7 +78,7 @@ router.get('/:appId/post/:postId', function(req, res, next) {
   }
 });
 
-router.get('/:appId/:section', function(req, res, next) {
+router.get('/a/:appId/:section', function(req, res, next) {
   let appHost = hostname(req);
   let appId = req.params.appId;
   let section = req.params.section;

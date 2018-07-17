@@ -150,7 +150,7 @@ cope.render('/', obj => {
           card.$().css('cursor', 'pointer')
             .on('click', evt => {
               try {
-                location.href = '/' + appId + '/card/' + cardData.value.id; 
+                location.href = '/a/' + appId + '/card/' + cardData.value.id; 
               } catch (err) {
                 console.error(err);
               }
@@ -219,7 +219,7 @@ cope.render('/', obj => {
           }
           if (j == 0) {
             try { 
-              return [ 'a(href="/' + appId + '/card/' 
+              return [ 'a(href="/a/' + appId + '/card/' 
                 + cardData.value.id
                 + '" target="_blank")', String(idx + 1) ]
             } catch (err) {

@@ -36,7 +36,7 @@ cope.render('/app/cards', obj => {
       card.$().css('cursor', 'pointer')
         .on('click', evt => {
           try {
-            location.href = '/' + appId + '/card/' + cardValue.id
+            location.href = '/a/' + appId + '/card/' + cardValue.id
           } catch (err) {
             console.error(err);
           }
