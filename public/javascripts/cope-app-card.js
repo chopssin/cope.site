@@ -175,7 +175,10 @@ cope.render('/app/card', obj => {
 
       let card = cope.ui.build('Cope.Card.Editable', {
         sel: '#page-content',
-        method: 'append'
+        method: 'append',
+        data: {
+          original: true
+        }
       });
     
       if (res.v) {

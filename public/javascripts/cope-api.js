@@ -384,7 +384,9 @@ cope.prop('ui', function() {
             }, [{ 'div[relative;width:100%]': '' }]);
 
             if (x && x.image) {
-              if (x.image.resizedURL) {
+              if (x.image.originalURL && vu.get('original')) {
+                imgDiv.$().html(cope.dom([[ 'img(src="'+x.image.originalURL+'" width="100%")' ]]));
+              } else if (x.image.resizedURL) {
                 imgDiv.$().html(cope.dom([[ 'img(src="'+x.image.resizedURL+'" width="100%")' ]]));
               } else if (x.image.dataURL) {
                 //x.image.img.style.width = '100%';
