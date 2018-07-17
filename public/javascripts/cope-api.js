@@ -617,7 +617,10 @@ cope.prop('ui', function() {
 
                 imgDiv.set('obj', Object.assign({}, x));
 
-                if (x.image.resizedURL) {
+                if (x.image.originalURL) {
+                  imgDiv.set('url', x.image.originalURL);
+                  imgDiv.$('@image').html(cope.dom([['img(src="' + x.image.originalURL + '" width="100%")']]));
+                } else if (x.image.resizedURL) {
                   imgDiv.set('url', x.image.resizedURL);
                   imgDiv.$('@image').html(cope.dom([['img(src="' + x.image.resizedURL + '" width="100%")']]));
                 } else if (x.image.img) {
