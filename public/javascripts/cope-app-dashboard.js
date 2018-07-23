@@ -19,6 +19,13 @@ cope.render('/', obj => {
           }]
         },
         { '.col-xs-12': [
+          { 'div[fw:800]': [
+            { 'span[pr:6px]': 'Found' }, 
+            { 'span@entries': '0' },
+            { 'span[pl:6px]': 'Card(s)' }] 
+          }]
+        },
+        { '.col-xs-12': [
           { '@table': '' }] 
         },
         { '.col-xs-12': [
@@ -185,6 +192,7 @@ cope.render('/', obj => {
       let counts = [];
       let mins = [];
       let maxes = [];
+      let entries = 0;
       tableRaws.map((cardData, idx) => {
         let cells = [null];
         cells = cells.concat(headers.map((name, j) => {
@@ -219,6 +227,7 @@ cope.render('/', obj => {
           }
           if (j == 0) {
             try { 
+              entries = idx + 1;
               return [ 'a(href="/a/' + appId + '/card/' 
                 + cardData.value.id
                 + '" target="_blank")', String(idx + 1) ]
@@ -253,13 +262,16 @@ cope.render('/', obj => {
         })); // end of cells.concat(...)
         table.append.apply(null, cells);
       }); // end of tableRaws.map(...)
+
+      return entries;
     }); // end of main.search
 
     vu.init(data => {
       vu.load();
 
       vu.$('@magicBtn').click(evt => {
-        vu.search(vu.$('@searchInput').val().trim());
+        let entries = vu.search(vu.$('@searchInput').val().trim());
+        vu.$('@entries').html(entries);
       });
     });
   }).build({
