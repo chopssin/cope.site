@@ -19,14 +19,14 @@ cope.render('/', obj => {
           }]
         },
         { '.col-xs-12': [
+          { '@table': '' }] 
+        },
+        { '.col-xs-12': [
           { 'div[fw:800]': [
             { 'span[pr:6px]': 'Found' }, 
             { 'span@entries': '0' },
             { 'span[pl:6px]': 'Card(s)' }] 
           }]
-        },
-        { '.col-xs-12': [
-          { '@table': '' }] 
         },
         { '.col-xs-12': [
           { '@cards.card-columns': '' }] 
@@ -88,6 +88,7 @@ cope.render('/', obj => {
       //console.log(texts);
 
       let cardsData = vu.get('cardsData');
+      /*
       let findMatch = function(str, loosenSearch) {
         if (!str || str.length < 1) {
           return false;
@@ -113,30 +114,100 @@ cope.render('/', obj => {
         });
         return yes;
       };
-      let matches = [];
-      let tableRaws = [];
+      */
+
+
+      // text vs header, text and key-values
+      let match = function(text, seeds, loosen) {
+        let matched = false;
+        try {
+          for (let i = 0; i < seeds.length; i++) {
+            if (seeds[i] === text) {
+              matched = true;
+              break;
+            } else if (loosen && (seeds[i].indexOf(text) > -1)) {
+              matched = true;
+              break;
+            }
+          }
+        } catch (err) {
+          // Do nothing ...
+        }
+        return matched;
+      };
+
+      let matches = []; // matched cards
+      let tableRaws = []; // table's raw data
       try {
         cardsData.map(c => {
           try {
-            let tmp = {};
-            c.value.keyValues.map(kv => {
-              tmp[kv.key] = true;
-              tmp[kv.value] = true;
-              if (findMatch(kv.key)) {
-                headers[kv.key] = true;
-              } 
+            let matchedTexts = {};
+            let allMatched = true;
+            let oneMatched = false;
+            //c.value.keyValues.map(kv => {
+              //tmp[kv.key] = true;
+              //tmp[kv.value] = true;
+              //if (match(kv.key)) {
+              //  headers[kv.key] = true;
+              //} 
+            //});
+            let keyValues = [];
+            c.value.keyValues.map(x => {
+              if (x.key) {
+                keyValues = keyValues.concat(x.key);
+                if (match(x.key, texts)) {
+                  headers[x.key] = true;
+                }
+              }
+              if (x.value) {
+                keyValues = keyValues.concat(x.value);
+              }
             });
+            let headerAndText = [];
+            if (c.value.header) {
+              headerAndText = headerAndText.concat(c.value.header);
+            }
+            if (c.value.text) {
+              headerAndText = headerAndText.concat(c.value.text);
+            }
+            for (let i = 0; i < texts.length; i++) {
+              if (match(texts[i], keyValues || [])
+                || match(texts[i], headerAndText, true)) {
+                matchedTexts[texts[i]] = true;
+                oneMatched = true;
+              }
+            }
+
+            console.log(texts, matchedTexts);
+            for (let i = 0; i < texts.length; i++) {
+              if (!matchedTexts[texts[i]]) {
+                allMatched = false;
+              }
+            }
+
+            if (allMatched) {
+              tableRaws = tableRaws.concat(c);
+              matches = matches.concat(c);
+            } else if (oneMatched) {
+              matches = matches.concat(c);
+            }
             
             //if (isContainingAllTexts(tmp)) {
             //  tableRaws = tableRaws.concat(c);
             //  matches = matches.concat(c);
             //} else {
+            /*if (isContainingAllTexts(tmp)) {
+              tableRaws = tableRaws.concat(c);
+              matches = matches.concat(c); 
+            } 
+            
             if (isContainingAllTexts(tmp)
               || findMatch(c.value.header, true)
               || findMatch(c.value.text, true)) {
-              tableRaws = tableRaws.concat(c);
               matches = matches.concat(c); 
             }
+            console.log(matches, texts, c.value.header, c.value.text);
+            */
           } catch (err) {
             // Do nothing ... 
             // console.error(err, c);
@@ -192,7 +263,6 @@ cope.render('/', obj => {
       let counts = [];
       let mins = [];
       let maxes = [];
-      let entries = 0;
       tableRaws.map((cardData, idx) => {
         let cells = [null];
         cells = cells.concat(headers.map((name, j) => {
@@ -203,19 +273,29 @@ cope.render('/', obj => {
               try { 
                 switch (cardData) {
                   case 'SUM':
-                    return j == 0 ? 'SUM' : String(sums[j].toFixed(2));
+                    if (j == 0) { return cardData; }
+                    if (isNaN(sums[j])) { return ''; }
+                    return String(sums[j].toFixed(2));
                     break;
                   case 'COUNT':
-                    return j == 0 ? 'COUNT' : String(counts[j]);
+                    if (j == 0) { return cardData; }
+                    if (isNaN(counts[j])) { return ''; }
+                    return String(counts[j]);
                     break;
                   case 'AVG':
-                    return j == 0 ? 'AVG' : String((sums[j] / counts[j]).toFixed(2));
+                    if (j == 0) { return cardData; }
+                    if (isNaN(sums[j]) || isNaN(counts[j]) || counts[j] == 0) { return ''; }
+                    return String((sums[j] / counts[j]).toFixed(2));
                     break;
                   case 'MIN':
-                    return j == 0 ? 'MIN' : String(mins[j]);
+                    if (j == 0) { return cardData; }
+                    if (isNaN(mins[j])) { return ''; }
+                    return String(mins[j]);
                     break;
                   case 'MAX':
-                    return j == 0 ? 'MAX' : String(maxes[j]);
+                    if (j == 0) { return cardData; }
+                    if (isNaN(maxes[j])) { return ''; }
+                    return String(maxes[j]);
                     break;
                   default:
                 }
@@ -227,7 +307,6 @@ cope.render('/', obj => {
           }
           if (j == 0) {
             try { 
-              entries = idx + 1;
               return [ 'a(href="/a/' + appId + '/card/' 
                 + cardData.value.id
                 + '" target="_blank")', String(idx + 1) ]
@@ -263,7 +342,7 @@ cope.render('/', obj => {
         table.append.apply(null, cells);
       }); // end of tableRaws.map(...)
 
-      return entries;
+      return matches.length;
     }); // end of main.search
 
     vu.init(data => {
