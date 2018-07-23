@@ -143,7 +143,7 @@ cope.render('/', obj => {
           try {
             let matchedTexts = {};
             let allMatched = true;
-            let oneMatched = false;
+            let matchCount = 0;
             //c.value.keyValues.map(kv => {
               //tmp[kv.key] = true;
               //tmp[kv.value] = true;
@@ -174,11 +174,10 @@ cope.render('/', obj => {
               if (match(texts[i], keyValues || [])
                 || match(texts[i], headerAndText, true)) {
                 matchedTexts[texts[i]] = true;
-                oneMatched = true;
+                matchCount += 1;
               }
             }
 
-            console.log(texts, matchedTexts);
             for (let i = 0; i < texts.length; i++) {
               if (!matchedTexts[texts[i]]) {
                 allMatched = false;
@@ -188,8 +187,14 @@ cope.render('/', obj => {
             if (allMatched) {
               tableRaws = tableRaws.concat(c);
               matches = matches.concat(c);
-            } else if (oneMatched) {
-              matches = matches.concat(c);
+            } else { 
+              try {
+                if ((matchCount / texts.length) > 0.8) {
+                  matches = matches.concat(c);
+                }
+              } catch (err) {
+                // Do nothing ...
+              }
             }
             
             //if (isContainingAllTexts(tmp)) {
