@@ -452,12 +452,12 @@ cope.prop('ui', function() {
   uiAPI.create('Cope.Card.Editable', cope.class(vu => {
     vu.method('edit', function() {
       let onEdit;
-      return function(fn) {
+      return function(fn, onDup) {
         if (typeof fn == 'function' && !onEdit) {
           vu.$('.card-body').prepend(cope.dom([
-            { 'div[w:100%; float:right]': [
-              //{ 'button.btn.btn-primary@editBtn[absolute;max-width:104px;top:8px;right:8px;will-change:auto;z-index:1]': 'Edit' }
-              { 'button.btn.btn-primary@editBtn[float:right;will-change:auto;z-index:1]': 'Edit' }] 
+            { 'div[w:100%; h:36px]': [
+              { 'button.btn.btn-primary@editBtn[float:right;will-change:auto;z-index:1]': 'Edit' },
+              { 'button.btn.btn-secondary@dupBtn[none; float:right;will-change:auto;z-index:1]': 'Dubplicate' }]
             }
           ], vu.id));
 
@@ -469,6 +469,18 @@ cope.prop('ui', function() {
             }
           });
           onEdit = fn;
+
+          if (typeof onDup == 'function') {
+            vu.$('@dupBtn').css('display', 'block'); 
+          }
+
+          vu.$('@dupBtn').on('click', evt => {
+            try {
+              onDup();
+            } catch (err) {
+              console.error(err);
+            }
+          });
         } else if (arguments.length == 0) {
           try {
             onEdit();

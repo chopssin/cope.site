@@ -13,6 +13,10 @@ cope.render('/app/card', obj => {
       { 'button#doneBtn.btn.btn-primary[float:right]': 'Done' }] 
     }]));
 
+    editor.$().append(cope.dom([{ 'div[w:100%]': [
+      { 'button#delBtn.btn.btn-danger[block;relative; m:0 auto]': 'Delete This Card' }] 
+    }]))
+
     $('#doneBtn').on('click', evt => {
       let wait = cope.wait(); // outer wait
       let updates = editor.fetch();
@@ -58,8 +62,6 @@ cope.render('/app/card', obj => {
       }
 
       wait.run(() => { // outer wait.run(...)
-        // TBD: issue: this function is overwriten by cope.uploadFiles's innate
-        // wait!!!!!!!!
         cope.send('/card/update', {
           appId: appId,
           cardId: cardId,
@@ -68,7 +70,28 @@ cope.render('/app/card', obj => {
           loadCard();
         })
       }); // end of wait.run(...)
-    });
+    }); // end of #doneBtn.onclick
+
+    $('#delBtn').on('click', evt => {
+      let queue = cope.queue();
+      let page = null; 
+      queue.add(next => {
+        cope.send('/page/del', {
+          appId: appId,
+          contentId: cardId
+        }).then(res => {
+          next();
+        });
+      });
+      queue.add(next => {
+        cope.send('/card/del', {
+          appId: appId,
+          id: cardId
+        }).then(res => {
+          location.href = '/a/' + appId + '/cards';
+        });
+      });
+    }); // end of #delBtn.onclick
   }; // end of editCard
 
   let loadCard = function() {
@@ -187,6 +210,19 @@ cope.render('/app/card', obj => {
 
       card.edit(() => {
         editCard(card);
+      }, () => {
+        console.log(card.fetch());
+        let v = card.fetch();
+        v.header = 'Copy: ' + (v.header || 'Untitled Card'); 
+        if (v.id) { delete v.id; }
+        cope.send('/card/add', v).then(res => {
+          console.log(res);
+          try {
+            location.href = '/a/' + res.v.appId + '/card/' + res.v.id; 
+          } catch (err) {
+            console.error(err);
+          }
+        });
       });
     });// end of cope.send('/card/get', ...)
   } // end of loadCard
