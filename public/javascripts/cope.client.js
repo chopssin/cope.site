@@ -900,9 +900,8 @@ cope.fileLoader = function(onload) {
           result.filename = files[i].name || 'no-name';
           resultArr[i] = result;
 
-          //let loader = 
           loadImage(files[i], function(img) {
-            loadedCount++;
+
             if (img.type != 'error') {
               let image = {};
               let prefix = options && options.maxWidth ? '_scaled_' + options.maxWidth + '_' : '';
@@ -915,6 +914,12 @@ cope.fileLoader = function(onload) {
               } catch (err) {
                 console.error(err); 
               }
+
+              // Create original-sized blob
+              loadImage(files[i], function(img) {
+                resultArr[i].file = dataURItoBlob(img.toDataURL());
+                loadedCount++;
+              }, { orientation: true });
             }
           }, options);
         } // end of for
