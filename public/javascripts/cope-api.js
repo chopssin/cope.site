@@ -457,7 +457,7 @@ cope.prop('ui', function() {
           vu.$('.card-body').prepend(cope.dom([
             { 'div[w:100%; h:36px]': [
               { 'button.btn.btn-primary@editBtn[float:right;will-change:auto;z-index:1]': 'Edit' },
-              { 'button.btn.btn-secondary@dupBtn[none; float:right;will-change:auto;z-index:1]': 'Dubplicate' }]
+              { 'button.btn.btn-info@dupBtn[none; float:right;will-change:auto;z-index:1]': 'Dubplicate' }]
             }
           ], vu.id));
 
