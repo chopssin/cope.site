@@ -34,10 +34,11 @@ router.get('/a/:appId', function(req, res, next) {
     //res.render('appIndex');
   } else {
     debug('Requesting Cope');
-    res.render('cope-app-dashboard', { 
+    res.render('cope-app-section', { 
       title: 'Cope', 
       appId: appId,
-      path: null,
+      section: 'dashboard',
+      path: '/app/dashboard',
       params: null
     });
   }
@@ -86,14 +87,31 @@ router.get('/a/:appId/:section', function(req, res, next) {
     debug('Requesting page on ' + appHost);
     res.render('appIndex');
   } else {
-    debug('Requesting Cope');
-    res.render('cope-app-' + section, { 
-      title: 'Cope', 
-      appId: appId,
-      path: null,
-      params: null
-    });
+    switch (section) {
+      case 'cards':
+      case 'posts':
+      case 'pages':
+      case 'store':
+      case 'settings':
+      case 'upgrade':
+        res.render('cope-app-section', {
+          title: 'Cope', 
+          appId: appId,
+          section: section,
+          path: '/app/' + section,
+          params: null
+        });
+        return;
+        break;
+      default:
+        next();
+    }
   }
 });
+
+router.get('/:appId/:channelName', function(req, res, next) {
+  res.send({ ok: true, data: { channelName: req.params.channelName } });
+});
+//router.get('/:appId/p/:pageId')
 
 module.exports = router;

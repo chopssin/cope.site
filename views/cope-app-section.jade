@@ -1,0 +1,7 @@
+extends cope-app
+
+block javascripts
+  script( src = "/javascripts/cope-app-#{section}.js" )
+  script.
+    //cope.render('/app/cards', { appId: '#{appId}' });
+    cope.render('#{path}', { appId: '#{appId}' });

@@ -1,4 +1,4 @@
-cope.render('/', obj => {
+cope.render('/app/dashboard', obj => {
   //console.log(obj);
   let appId = obj.appId;
 
