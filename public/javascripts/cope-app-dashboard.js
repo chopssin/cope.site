@@ -171,7 +171,7 @@ cope.render('/app/dashboard', obj => {
               headerAndText = headerAndText.concat(c.value.text);
             }
             for (let i = 0; i < texts.length; i++) {
-              if (match(texts[i], keyValues || []) {
+              if (match(texts[i], keyValues || [])) {
               //if (match(texts[i], keyValues || [])
               //  || match(texts[i], headerAndText, true)) {
                 matchedTexts[texts[i]] = true;
