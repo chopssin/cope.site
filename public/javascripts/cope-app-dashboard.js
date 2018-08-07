@@ -141,7 +141,9 @@ cope.render('/app/dashboard', obj => {
       try {
         cardsData.map(c => {
           try {
-            let matchedTexts = {};
+            //let matchedTexts = {};
+            let matchedKeyValues = {};
+            let matchedHeaderAndTexts = {};
             let allMatched = true;
             let matchCount = 0;
             //c.value.keyValues.map(kv => {
@@ -174,13 +176,17 @@ cope.render('/app/dashboard', obj => {
               if (match(texts[i], keyValues || [])) {
               //if (match(texts[i], keyValues || [])
               //  || match(texts[i], headerAndText, true)) {
-                matchedTexts[texts[i]] = true;
+                //matchedTexts[texts[i]] = true;
+                matchedKeyValues[texts[i]] = true;
                 matchCount += 1;
+              } else if (match(texts[i], headerAndText, true)) {
+                matchedHeaderAndTexts[texts[i]] = true;
               }
             }
 
             for (let i = 0; i < texts.length; i++) {
-              if (!matchedTexts[texts[i]]) {
+              //if (!matchedTexts[texts[i]]) {
+              if (!matchedKeyValues[texts[i]]) {
                 allMatched = false;
               }
             }
@@ -190,7 +196,19 @@ cope.render('/app/dashboard', obj => {
               matches = matches.concat(c);
             } else { 
               try {
-                if ((matchCount / texts.length) > 0.8) {
+                //if ((matchCount / texts.length) > 0.8) {
+                //  matches = matches.concat(c);
+                //} else {
+                //
+                //}
+                let loosenMatched = true;
+                let matchedTexts = Object.assign({}, matchedKeyValues, matchedHeaderAndTexts);
+                for (let i = 0; i < texts.length; i++) {
+                  if (!matchedTexts[texts[i]]) {
+                    loosenMatched = false;
+                  }
+                }
+                if (loosenMatched) {
                   matches = matches.concat(c);
                 }
               } catch (err) {
