@@ -177,30 +177,26 @@ cope.render('/app/dashboard', obj => {
       console.log(matchedCards);
       // Matched Cards
       vu.$('@cards').html('');
-      if (matchedCards.length > 0) {
-        matchedCards.map(cardData => {
-          try { 
-            let card = cope.ui.build('Cope.Card', {
-              sel: vu.sel('@cards'),
-              method: 'append'
+      matchedCards.map(cardData => {
+        try { 
+          let card = cope.ui.build('Cope.Card', {
+            sel: vu.sel('@cards'),
+            method: 'append'
+          });
+          card.load(cardData.value);
+          card.$().css('cursor', 'pointer')
+            .on('click', evt => {
+              try {
+                location.href = '/a/' + appId + '/card/' + cardData.value.id; 
+              } catch (err) {
+                console.error(err);
+              }
             });
-            card.load(cardData.value);
-            card.$().css('cursor', 'pointer')
-              .on('click', evt => {
-                try {
-                  location.href = '/a/' + appId + '/card/' + cardData.value.id; 
-                } catch (err) {
-                  console.error(err);
-                }
-              });
-          } catch (err) {
-            console.error(err);
-          }
-        });      
-      } else {
-        entries = 0;
-      }
-      return entries;
+        } catch (err) {
+          console.error(err);
+        }
+      });      
+      return matchedCards.length;
     }); // end of main.search
 
     vu.init(data => {
