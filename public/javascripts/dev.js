@@ -682,6 +682,64 @@ test('Cope.Channel.Editor', (next , stat) => {
   next();
 });
 
+test('cope.collection and cope.range', (next, stat) => {
+  stat.$('@display').html(cope.dom([{ 
+    'p[p:20px; fz:14px]': 'cope.collection(Array of { "keyValues": Object }) and cope.range(Array of Number)' 
+  }]));
+
+  let entries = [{ 
+    'keyValues': { 
+      'Date': '2011/2/3',
+      'Name': 'Alice',
+      'Score': '-10.2521',
+      'Empty': '',
+    }
+  }, {
+    'keyValues': { 
+      'Date': '2011/3/3',
+      'Cost': '13,022.02',
+      'Score': '10.4',
+      'Empty': ''
+    }
+  }, {
+    'keyValues': {
+      'TBD': 'true',
+      'Date': '',
+      'Cost': ''
+    }
+  }];
+
+  let col = cope.collection(entries);
+  if (col.getTable(['Date']).length === 3
+    && col.getTable(['Date', 'Cost']).length === 2
+    && col.getTable(['Date', 'Empty']).length === 3
+    && col.getTable(['Alice']).length === 0
+    && col.getTable(['Date', 'Alice']).length === 2) {
+  }
+
+  //let scores = cope.range(col.getTable(['Score']).map(x => cope.toNumber(x[1])));
+  let scores = col.getTable(['Score']).map(x => x[1].value);
+  scores = cope.range(scores);
+  if (scores.count === 2 
+    && scores.min === -10.2521
+    && scores.max === 10.4
+    && scores.sum === 0.1479
+    && scores.avg === 0.07395) {
+    stat.ok();
+  }
+  // TBD
+  // let table = col.getTable([ ... ]);
+  // let range = cope.range(table.map(x => x[1])); // column 1
+  // range = cope.range(table[1]); // row 1
+  // range.count
+  // range.sum
+  // range.avg
+  // range.min
+  // range.max
+
+  next();
+});
+
 test('End with this test', (next, stat) => {
   stat.ok();
   next();

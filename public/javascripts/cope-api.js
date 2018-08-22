@@ -1389,3 +1389,173 @@ cope.prop('uploadFiles', (a, options) => { // a should be an array of files
     });
   }); // end of Promise
 }); // end of cope.prop('uploadFiles', func)
+
+cope.prop('collection', function(arr) {
+  if (!Array.isArray(arr)) {
+    arr = [];
+  }
+
+  /*
+  let findNumber = function(str) {
+    let regex = /[0-9\.\,]+/g;
+    let found = str.match(regex);
+    let num;
+    if (found && found[0] && str.indexOf(found[0]) == 0) {
+      num = Number(found[0]);
+    } 
+  }; // end of findNumber
+
+  let findDate = function(str) {
+  
+  }; // end of findDate
+  */
+
+  let colAPI = {};
+
+  colAPI.filter = function(keywords) {
+    if (!Array.isArray(keywords) 
+      || keywords.length < 1) {
+      return cope.collection(arr);
+    } 
+
+    let filtereArr = [];
+    let keyword = keywords[0];
+    arr.map(x => {
+      try {
+        let str = JSON.stringify(x);
+        if (str.indexOf(keyword) > -1) {
+          filteredArr = filteredArr.concat(x);
+        } 
+      } catch (err) {
+        return; 
+      }
+    });
+    return cope
+      .collection(filteredArr)
+      .filter(keywords.slice(1));
+  }; // end of colAPI.filter
+
+  colAPI.getTable = function(keywords) {
+    if (!Array.isArray(keywords) 
+      || keywords.length < 1) {
+      return [];
+    }
+    let table = [];
+    let matchedArr = [];
+    let headers = {};
+    arr.map(x => {
+      if (typeof x.keyValues == 'object') {
+        try {
+          // TBD: Check if keyValues covers all the keywords
+          let matchedKeyValues = {};
+          keywords.map(keyword => {
+            Object.keys(x.keyValues).map(key => {
+              if (key == keyword) {
+                headers[key] = true;
+                matchedKeyValues[keyword] = true;
+              }
+              if (x.keyValues[key] == keyword) {
+                matchedKeyValues[keyword] = true;
+              }
+            });
+          });
+
+          let matched = true;
+          for (let i = 0; i < keywords.length; i++) {
+            if (!matchedKeyValues[keywords[i]]) {
+              matched = false;
+              break;
+            }
+          }
+
+          if (matched) {
+            matchedArr = matchedArr.concat(x);
+          }
+        } catch (err) {
+          // Do nothing ...
+        }
+      }
+    }) // end of arr.map( ... )
+    
+    // Construct the table
+    let _headers = [];
+    keywords.map(k => {
+      if (headers[k]) {
+        _headers = _headers.concat(k);
+      }
+    });
+
+    table = [['#'].concat(_headers)];
+    matchedArr.map(x => {
+      table = table.concat([[x].concat(_headers.map(key => {
+        if (x.keyValues.hasOwnProperty(key)) {
+          let type = 'string';
+          let value = x.keyValues[key];
+          let payload = String(value);
+          if (cope.toDate(value)) {
+            type = 'date';
+            value = cope.toDate(value).getTime();
+          } else if (!isNaN(cope.toNumber(value))) {
+            type = 'number';
+            value = cope.toNumber(value);
+          }
+          return {
+            'type': type,
+            'value': value,
+            'payload': payload
+          }
+        }
+        return null;
+      }))]);
+    });
+
+    // Remove empty rows
+    table = table.reduce((rows, currRow) => {
+      if (currRow.slice(1).reduce((isEmpty, currValue) => {
+        return isEmpty && (!currValue 
+          || (currValue && currValue.value === '')
+        );
+      }, true)) { 
+        // currRow is empty
+        return rows;
+      }
+      return rows.concat([currRow]);
+    }, []);
+
+    return table;
+    // Remove empty columns
+    /*
+    let cleanTable = table.map(row => []); // [[], [], ...[]]
+    let count = 0;
+    for (let i = 0; i < table[0].length; i++) {
+      let isEmpty = true;
+      for (let j = 0; j < table.length; j++) {
+        if (table[j][i]) {
+          isEmpty = false;
+        }
+      }
+      if (!isEmpty) {
+        for (let j = 0; j < table.length; j++) {
+          cleanTable[j][count] = table[j][i]; 
+        }
+        count += 1;
+      }
+    }
+    */
+
+    //return cleanTable;
+    // '#', h0, h1, ...
+    // x0, xv0, xv1, ...
+    // ...
+  }; // end of colAPI.getTable
+
+  //TBD: colAPI.getStats: { count, <fieldName>:{min,max,sum,avg} }
+
+  colAPI.getArray = function() {
+    return arr;
+  }; // end of colAPI.getArray
+
+  colAPI.count = arr.length;
+
+  return colAPI;
+}); // end of cope.prop('collection', func)

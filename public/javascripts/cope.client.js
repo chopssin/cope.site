@@ -654,6 +654,71 @@ cope.randId = function(len) {
   }
   return id;
 };
+cope.toNumber = function(str) {
+  let result;
+  let regex = /^\-?[0-9\,]+[\.]?[0-9\,]+|^[0-9\,]+/g;
+  try {
+    let matches = str.match(regex);
+    if (matches && matches[0] && matches[0].length > 0) {
+      result = Number(matches[0].replace(/\,/g, ''));
+    }
+  } catch (err) {
+    //console.error(err);
+  }
+  return result;
+}; // end of cope.toNumber 
+cope.toDate = function(str) {
+  let result;
+  try {
+    let tmp = str.split(/\-|\//).map(x => {
+      let num = Number(x);
+      if (!isNaN(num)) {
+        if (num < 10 && num > -1) {
+          num = '0' + num;
+        } else {
+          num = '' + num;
+        }
+      }
+      return num;
+    });
+    if (tmp && tmp.length === 3) {
+      result = new Date(tmp.join('-'));
+    }
+  } catch (err) {
+    // Do nothing ...
+  }
+  return result;
+}; // end of cope.toDate
+cope.range = function(arr) {
+  let result = {};
+  result.count = 0;
+  try {
+    for (let i = 0; i < arr.length; i++) {
+      if (typeof arr[i] == 'number' && !isNaN(arr[i])) {
+        if (!result.hasOwnProperty('min') || arr[i] < result.min) {
+          result.min = arr[i];
+        }
+        if (!result.hasOwnProperty('max') || arr[i] > result.max) {
+          result.max = arr[i];
+        }
+        if (!result.hasOwnProperty('sum')) {
+          result.sum = arr[i]
+        } else {
+          result.sum += arr[i];
+        }
+        result.count += 1;
+      }
+    }
+    if (result.count > 0) {
+      result.sum = Math.round(result.sum * 1000000) / 1000000;
+      result.avg = Math.round(Number.parseFloat(result.sum / result.count) * 1000000) / 1000000;
+    }
+  } catch (err) {
+    console.error(err);
+    return null;
+  }
+  return result;
+}; // end of cope.range
 cope.send = function(path, params, method) {
   return new Promise((resolve, reject) => {
     let cmd = {};
