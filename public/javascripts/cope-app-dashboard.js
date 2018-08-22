@@ -69,9 +69,6 @@ cope.render('/app/dashboard', obj => {
     }); // end of main.load
 
     vu.method('search', text => {
-      let texts = [];
-      let headers = {};
-      vu.$('@cards').html('');
       try {
         texts = text
           .replace(/\,\s+/g, ',')
@@ -85,288 +82,125 @@ cope.render('/app/dashboard', obj => {
         texts = [];
         return;
       }
-      //console.log(texts);
-
       let cardsData = vu.get('cardsData');
-      /*
-      let findMatch = function(str, loosenSearch) {
-        if (!str || str.length < 1) {
-          return false;
-        }
-        let matched = false;
-        texts.map(t => {
-          if (loosenSearch) {
-            if (str.indexOf(t) > -1) {
-              matched = true;
-            }
-          } else if (t == str) {
-            matched = true;
-          }
-        });
-        return matched;
-      }; // end of findMatch
-      let isContainingAllTexts = function(obj) { // check if a contains b
-        let yes = true;
-        texts.map(x => {
-          if (!obj[x]) {
-            yes = false;
-          }
-        });
-        return yes;
-      };
-      */
-
-
-      // text vs header, text and key-values
-      let match = function(text, seeds, loosen) {
-        let matched = false;
+      let arr = cardsData.map(x => {
+        let obj = {};
+        let keyValues = {};
         try {
-          for (let i = 0; i < seeds.length; i++) {
-            if (seeds[i] === text) {
-              matched = true;
-              break;
-            } else if (loosen && (seeds[i].indexOf(text) > -1)) {
-              matched = true;
-              break;
-            }
-          }
-        } catch (err) {
-          // Do nothing ...
-        }
-        return matched;
-      };
-
-      let matches = []; // matched cards
-      let tableRaws = []; // table's raw data
-      try {
-        cardsData.map(c => {
-          try {
-            //let matchedTexts = {};
-            let matchedKeyValues = {};
-            let matchedHeaderAndTexts = {};
-            let allMatched = true;
-            let matchCount = 0;
-            //c.value.keyValues.map(kv => {
-              //tmp[kv.key] = true;
-              //tmp[kv.value] = true;
-              //if (match(kv.key)) {
-              //  headers[kv.key] = true;
-              //} 
-            //});
-            let keyValues = [];
-            c.value.keyValues.map(x => {
-              if (x.key) {
-                keyValues = keyValues.concat(x.key);
-                if (match(x.key, texts)) {
-                  headers[x.key] = true;
-                }
-              }
-              if (x.value) {
-                keyValues = keyValues.concat(x.value);
-              }
-            });
-            let headerAndText = [];
-            if (c.value.header) {
-              headerAndText = headerAndText.concat(c.value.header);
-            }
-            if (c.value.text) {
-              headerAndText = headerAndText.concat(c.value.text);
-            }
-            for (let i = 0; i < texts.length; i++) {
-              if (match(texts[i], keyValues || [])) {
-              //if (match(texts[i], keyValues || [])
-              //  || match(texts[i], headerAndText, true)) {
-                //matchedTexts[texts[i]] = true;
-                matchedKeyValues[texts[i]] = true;
-                matchCount += 1;
-              } else if (match(texts[i], headerAndText, true)) {
-                matchedHeaderAndTexts[texts[i]] = true;
-              }
-            }
-
-            for (let i = 0; i < texts.length; i++) {
-              //if (!matchedTexts[texts[i]]) {
-              if (!matchedKeyValues[texts[i]]) {
-                allMatched = false;
-              }
-            }
-
-            if (allMatched) {
-              tableRaws = tableRaws.concat(c);
-              matches = matches.concat(c);
-            } else { 
-              try {
-                //if ((matchCount / texts.length) > 0.8) {
-                //  matches = matches.concat(c);
-                //} else {
-                //
-                //}
-                let loosenMatched = true;
-                let matchedTexts = Object.assign({}, matchedKeyValues, matchedHeaderAndTexts);
-                for (let i = 0; i < texts.length; i++) {
-                  if (!matchedTexts[texts[i]]) {
-                    loosenMatched = false;
-                  }
-                }
-                if (loosenMatched) {
-                  matches = matches.concat(c);
-                }
-              } catch (err) {
-                // Do nothing ...
-              }
-            }
-            
-            //if (isContainingAllTexts(tmp)) {
-            //  tableRaws = tableRaws.concat(c);
-            //  matches = matches.concat(c);
-            //} else {
-            /*if (isContainingAllTexts(tmp)) {
-              tableRaws = tableRaws.concat(c);
-              matches = matches.concat(c); 
-            } 
-            
-            if (isContainingAllTexts(tmp)
-              || findMatch(c.value.header, true)
-              || findMatch(c.value.text, true)) {
-              matches = matches.concat(c); 
-            }
-            console.log(matches, texts, c.value.header, c.value.text);
-            */
-          } catch (err) {
-            // Do nothing ... 
-            // console.error(err, c);
-          }
-        });
-      } catch (err) {
-        console.error(err);
-      }
-
-      // Display matched cards
-      matches.map(cardData => {
-        try { 
-          let card = cope.ui.build('Cope.Card', {
-            sel: vu.sel('@cards'),
-            method: 'append'
+          x.value.keyValues.map(x => {
+            keyValues[x.key] = x.value;
           });
-          card.load(cardData.value);
-          card.$().css('cursor', 'pointer')
-            .on('click', evt => {
-              try {
-                location.href = '/a/' + appId + '/card/' + cardData.value.id; 
-              } catch (err) {
-                console.error(err);
-              }
-            });
+          obj.keyValues = keyValues;
+          obj.data = x;
         } catch (err) {
-          console.error(err);
+          obj.keyValues = {};
+          obj.data = null; 
         }
-      }); // end of matches.map(...)
-
-      let table = cope.ui.build('UI.Table', {
+        return obj;
+      });
+      let col = cope.collection(arr);
+      let matchedCards = col.filter(texts).getArray().map(x => x.data);
+      let table = col.getTable(texts);
+      let entries = table.length - 1;
+      let tableUI = cope.ui.build('UI.Table', {
         sel: vu.sel('@table')
       });
 
-      // Add table headers
-      headers = texts.reduce((arr, t) => {
-        if (headers[t]) {
-          arr = arr.concat(t);
-        }
-        return arr;
-      }, []);
-      if (headers.length > 0) {
-        headers = ['#'].concat(headers);
+      // Headers
+      if (table.length > 0) {
+        tableUI.append.apply(null, [null].concat(table[0].map(x => { 
+          return cope.dom([{ 'div[fw:800]': x }]);
+        })));
       }
-      table.append.apply(null, [null].concat(headers.map(name => {
-        return { 'div[fw:800]': name }
-      })));
+      
+      // Values
+      if (table.length > 1) {
+        table.slice(1).map((row, idx) => {
+          let idLink = cope.dom([['a(href="/a/' + appId + '/card/' + row[0].data.value.id + '")', idx + 1]]);
+          tableUI.append.apply(null, [null, idLink].concat(row.slice(1).map(x => x.payload)));
+        });
+      }
 
-      tableRaws = tableRaws.concat([
-        'SUM', 'COUNT', 'AVG', 'MIN', 'MAX'
-      ]);
-      let sums = [];
-      let counts = [];
-      let mins = [];
-      let maxes = [];
-      tableRaws.map((cardData, idx) => {
-        let cells = [null];
-        cells = cells.concat(headers.map((name, j) => {
-          //cardData.value[name]
-          let v = '';
-          if (typeof cardData == 'string') { 
-            if (j >= headers.length - 5 || j == 0) {
-              try { 
-                switch (cardData) {
-                  case 'SUM':
-                    if (j == 0) { return cardData; }
-                    if (isNaN(sums[j])) { return ''; }
-                    return String(sums[j].toFixed(2));
-                    break;
-                  case 'COUNT':
-                    if (j == 0) { return cardData; }
-                    if (isNaN(counts[j])) { return ''; }
-                    return String(counts[j]);
-                    break;
-                  case 'AVG':
-                    if (j == 0) { return cardData; }
-                    if (isNaN(sums[j]) || isNaN(counts[j]) || counts[j] == 0) { return ''; }
-                    return String((sums[j] / counts[j]).toFixed(2));
-                    break;
-                  case 'MIN':
-                    if (j == 0) { return cardData; }
-                    if (isNaN(mins[j])) { return ''; }
-                    return String(mins[j]);
-                    break;
-                  case 'MAX':
-                    if (j == 0) { return cardData; }
-                    if (isNaN(maxes[j])) { return ''; }
-                    return String(maxes[j]);
-                    break;
-                  default:
-                }
-              } catch (err) {
-                // Do nothing ...
-              }
-            } 
-            return '';
-          }
-          if (j == 0) {
+      // Stats
+      if (table.length > 1) {
+        let stats = table[0].map((x, i) => {
+          let isDateTyped = true;
+          let range = cope.range(table.slice(1).map(x => {
             try { 
-              return [ 'a(href="/a/' + appId + '/card/' 
-                + cardData.value.id
-                + '" target="_blank")', String(idx + 1) ]
-            } catch (err) {
-              console.error(err, cardData);
-              return '';
-            }
-          }
-          cardData.value.keyValues.map(kv => {
-            if (kv.key == name && !v) {
-              v = kv.value;
-              let n = parseFloat(v, 10);
-              if (!isNaN(n)) {
-                if (!sums[j]) {
-                  sums[j] = 0;
-                }
-                if (!counts[j]) {
-                  counts[j] = 0;
-                }
-                sums[j] += n;
-                counts[j] += 1;
-                if (isNaN(mins[j]) || mins[j] > n) {
-                  mins[j] = n;
-                }
-                if (isNaN(maxes[j]) || maxes[j] < n) {
-                  maxes[j] = n;
-                }
+              if (x[i].type != 'date' || isNaN(x[i].value)) {
+                isDateTyped = false;
               }
+              return x[i].value;
+            } catch (err) {
+              // Do nothing ...
             }
-          }); // end of cardData...map(...)
-          return v;
-        })); // end of cells.concat(...)
-        table.append.apply(null, cells);
-      }); // end of tableRaws.map(...)
+            return null;
+          }));
 
-      return matches.length;
+          if (isDateTyped) {
+            delete range.sum;
+            delete range.avg;
+            let minDate = new Date(range.min);
+            let maxDate = new Date(range.max);
+            minDate = minDate.getFullYear() 
+              + '/' + (minDate.getMonth() + 1) 
+              + '/' + (minDate.getDate());
+            maxDate = maxDate.getFullYear() 
+              + '/' + (maxDate.getMonth() + 1) 
+              + '/' + (maxDate.getDate());
+            range.min = minDate;
+            range.max = maxDate;
+          }
+          return range;
+        });
+
+        let valid = function(v) {
+          if (typeof v == 'number') {
+            return v + '';
+          } else if (typeof v == 'string') {
+            return v
+          }
+          return '';
+        };
+
+        [
+          ['SUM'].concat(stats.slice(1).map(x => valid(x.sum))),
+          ['AVG'].concat(stats.slice(1).map(x => valid(x.avg))),
+          ['COUNT'].concat(stats.slice(1).map(x => valid(x.count))),
+          ['MIN'].concat(stats.slice(1).map(x => valid(x.min))),
+          ['MAX'].concat(stats.slice(1).map(x => valid(x.max)))
+        ].map(row => {
+          tableUI.append.apply(null, [null].concat(row));  
+        });
+      } // end of if (table.length > 1)
+
+      // Matched Cards
+      vu.$('@cards').html('');
+      if (entries > 0) {
+        matchedCards.map(cardData => {
+          // asdasd
+          try { 
+            let card = cope.ui.build('Cope.Card', {
+              sel: vu.sel('@cards'),
+              method: 'append'
+            });
+            card.load(cardData.value);
+            card.$().css('cursor', 'pointer')
+              .on('click', evt => {
+                try {
+                  location.href = '/a/' + appId + '/card/' + cardData.value.id; 
+                } catch (err) {
+                  console.error(err);
+                }
+              });
+          } catch (err) {
+            console.error(err);
+          }
+        });      
+      } else {
+        entries = 0;
+      }
+      return entries;
     }); // end of main.search
 
     vu.init(data => {

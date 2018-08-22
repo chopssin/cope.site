@@ -1418,7 +1418,7 @@ cope.prop('collection', function(arr) {
       return cope.collection(arr);
     } 
 
-    let filtereArr = [];
+    let filteredArr = [];
     let keyword = keywords[0];
     arr.map(x => {
       try {

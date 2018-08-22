@@ -405,14 +405,19 @@ let domToHtml = function(val, vuId) {
   
   readNode = function(node) {
     let tag, val, ret;
+    //if (typeof node == 'number') {
+    //  node = node + '';
+    //}
     if (typeof node == 'string') {
       return node;
     } else if (Array.isArray(node)) {
       tag = node[0];
-      val = node[1] || '';
+      val = node[1] + '' || '';
     } else if (typeof node == 'object') {
       tag = Object.keys(node)[0];
       val = node[tag];
+    } else {
+      throw 'cope.dom: invalid type of value: ' + node;
     }
     return readTag(tag, readVal(val), vuId).html;
   };
