@@ -101,7 +101,7 @@ cope.render('/app/dashboard', obj => {
       let col = cope.collection(arr);
       let matchedCards = col.filter(texts).getArray().map(x => x.data);
       let table = col.getTable(texts);
-      let entries = table.length - 1;
+      //let entries = table.length - 1;
       let tableUI = cope.ui.build('UI.Table', {
         sel: vu.sel('@table')
       });
@@ -174,11 +174,11 @@ cope.render('/app/dashboard', obj => {
         });
       } // end of if (table.length > 1)
 
+      console.log(matchedCards);
       // Matched Cards
       vu.$('@cards').html('');
-      if (entries > 0) {
+      if (matchedCards.length > 0) {
         matchedCards.map(cardData => {
-          // asdasd
           try { 
             let card = cope.ui.build('Cope.Card', {
               sel: vu.sel('@cards'),
