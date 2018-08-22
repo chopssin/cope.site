@@ -411,8 +411,11 @@ let domToHtml = function(val, vuId) {
     if (typeof node == 'string') {
       return node;
     } else if (Array.isArray(node)) {
+      if (typeof node[1] == 'number') {
+        node[1] = node[1] + '';
+      }
       tag = node[0];
-      val = node[1] + '' || '';
+      val = node[1] || '';
     } else if (typeof node == 'object') {
       tag = Object.keys(node)[0];
       val = node[tag];

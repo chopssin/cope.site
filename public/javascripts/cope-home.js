@@ -2,16 +2,9 @@ let copeHome = function() {
   
 let V = cope.views();
 let ds = cope.dataStore();
-ds.watch('newApp', appData => {
-  V.build('AppCard', {
-    'sel': '#page-content',
-    'method': 'append',
-    'data': appData
-  });
-});
 
-
-V.createClass('AppCard', vu => {
+//V.createClass('AppCard', vu => {
+let AppCard = cope.class(vu => {
   vu.dom(data => [
     { 'div.card': [
       [ 'a.card-body', [
@@ -27,6 +20,16 @@ V.createClass('AppCard', vu => {
     vu.$('.card-body').prop('href', '/a/' + v.appId);
   });
 });
+
+ds.watch('newApp', appData => {
+  //V.build('AppCard', {
+  AppCard.build({
+    'sel': '#page-content',
+    'method': 'append',
+    'data': appData
+  });
+});
+
 
 V.createClass('SignInCard', vu => {
   vu.dom(data => [
