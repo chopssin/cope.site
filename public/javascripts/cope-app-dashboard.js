@@ -39,7 +39,14 @@ cope.render('/app/dashboard', obj => {
         }, 
         { '.col-xs-12': [
           { 'div': [ 
-            { 'h4': 'Recent Cards' },
+            { 'h2[mt:32px; font-weight:800]': 'Collections' },
+            { 'div@collections': '' },
+            { 'button.btn.btn-primary@addCollectionBtn': 'Add Collection' }]
+          }]
+        }, 
+        { '.col-xs-12': [
+          { 'div': [ 
+            { 'h2[mt:32px; font-weight:800]': 'Recent Cards' },
             { 'div@recent-cards': '' }]
           }]
         } 
@@ -60,6 +67,34 @@ cope.render('/app/dashboard', obj => {
           let cardNum = cardsData.length;
 
           vu.set('cardsData', cardsData);
+
+          // Display recent cards
+          cardsData.sort((a, b) => {
+            if (a && a.updatedAt && b && b.updatedAt) {
+              return a.updatedAt < b.updatedAt;
+            }
+            return true;
+          }).slice(0, 4).map(cardData => {
+            try { 
+              let card = cope.ui.build('Cope.Card', {
+                sel: vu.sel('@recent-cards'),
+                method: 'append'
+              });
+              card.load(cardData.value);
+              card.$().css('cursor', 'pointer')
+                .on('click', evt => {
+                  try {
+                    location.href = '/a/' + appId + '/card/' + cardData.value.id; 
+                  } catch (err) {
+                    console.error(err);
+                  }
+                });
+            } catch (err) {
+              console.error(err);
+            }
+          }); // end of recent cards
+          
+
           vu.$('@cardNum').html(cardNum + ' Cards');
           vu.$('@searchWrap').show();
         } catch (err) {
