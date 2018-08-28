@@ -104,6 +104,9 @@ cope.render('/app/dashboard', obj => {
     }); // end of main.load
 
     vu.method('search', text => {
+      if (!text || !text.trim()) {
+        return;
+      }
       try {
         texts = text
           .replace(/\,\s+/g, ',')
@@ -209,7 +212,6 @@ cope.render('/app/dashboard', obj => {
         });
       } // end of if (table.length > 1)
 
-      console.log(matchedCards);
       // Matched Cards
       vu.$('@cards').html('');
       matchedCards.map(cardData => {
