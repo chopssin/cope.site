@@ -665,6 +665,11 @@ cope.randId = function(len) {
 cope.toNumber = function(str) {
   let result;
   let regex = /^\-?[0-9\,]+[\.]?[0-9\,]+|^[0-9\,]+/g;
+
+  if (str.indexOf(' ') < 0 && !str.match(/^[\d\,\.]+$/g)) {
+    // Strict mode: str should only consist of numbers, separators and dot
+    return result;
+  }
   try {
     let matches = str.match(regex);
     if (matches && matches[0] && matches[0].length > 0) {
