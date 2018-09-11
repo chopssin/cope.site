@@ -666,7 +666,7 @@ cope.toNumber = function(str) {
   let result;
   let regex = /^\-?[0-9\,]+[\.]?[0-9\,]+|^[0-9\,]+/g;
 
-  if (str.indexOf(' ') < 0 && !str.match(/^[\d\,\.]+$/g)) {
+  if (str.indexOf(' ') < 0 && !str.match(/^\-?[\d\,\.]+$/g)) {
     // Strict mode: str should only consist of numbers, separators and dot
     return result;
   }

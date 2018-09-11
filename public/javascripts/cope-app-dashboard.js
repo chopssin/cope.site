@@ -165,7 +165,7 @@ cope.render('/app/dashboard', obj => {
           let isDateTyped = true;
           let range = cope.range(table.slice(1).map(x => {
             try { 
-              if (x[i].type != 'date' || isNaN(x[i].value)) {
+              if (x[i].type != 'date') { //|| isNaN(x[i].value)) {
                 isDateTyped = false;
               }
               return x[i].value;
